@@ -1,0 +1,9 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_end",
+  "features": [
+    "weaponleveling:end_amber_ore",
+    "weaponleveling:end_amber_ore_surface"
+  ],
+  "step": "underground_ores"
+}

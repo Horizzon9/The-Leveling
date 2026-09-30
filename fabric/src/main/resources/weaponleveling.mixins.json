@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "package": "dev.weaponleveling.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "mixins": [
+    "ItemStackMixin",
+    "ItemStackAttributeMixin",
+    "LivingEntityDamageMixin",
+    "LivingEntityUseItemMixin",
+    "AnvilMenuMixin"
+  ],
+  "client": [
+    "AbstractContainerScreenAccessor",
+    "GuiGraphicsTooltipMixin",
+    "GuiGraphicsItemDecorationMixin",
+    "AbstractContainerScreenTooltipMixin",
+    "ItemStackFoilMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

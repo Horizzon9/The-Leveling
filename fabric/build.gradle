@@ -1,0 +1,80 @@
+plugins {
+    id "fabric-loom" version "${loom_version}"
+    id "java"
+}
+
+group = mod_group_id
+version = mod_version
+
+base {
+    archivesName = "${mod_id}-fabric-${minecraft_version}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
+}
+
+repositories {
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    // NeoForge surumu Parchment'li resmi Mojang adlarini kullanir; Parchment yalnizca PARAMETRE
+    // adi ekler, sinif/metot adlarini degistirmez - bu yuzden ortak kaynaklar mapping degisikligi
+    // olmadan burada da derlenir.
+    mappings loom.officialMojangMappings()
+
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    // NightConfig: config katmaninin TOML motoru. Fabric'te NeoForge'un ModConfigSpec'i yok,
+    // bu yuzden ayni kutuphane dogrudan kullanilir ve jar'a gomulur.
+    include(implementation("com.electronwill.night-config:core:${night_config_version}"))
+    include(implementation("com.electronwill.night-config:toml:${night_config_version}"))
+
+    // Jade yalnizca kuruluysa devreye giren opsiyonel entegrasyon.
+    modCompileOnly "maven.modrinth:jade:${jade_version}"
+    modLocalRuntime "maven.modrinth:jade:${jade_version}"
+}
+
+processResources {
+    inputs.property "version", version
+    inputs.property "mod_id", mod_id
+    inputs.property "mod_name", mod_name
+    inputs.property "mod_license", mod_license
+    inputs.property "mod_author", mod_author
+    inputs.property "minecraft_version", minecraft_version
+    inputs.property "fabric_loader_version", fabric_loader_version
+
+    filesMatching("fabric.mod.json") {
+        expand([
+            version: version,
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_license: mod_license,
+            mod_author: mod_author,
+            minecraft_version: minecraft_version,
+            fabric_loader_version: fabric_loader_version
+        ])
+    }
+}
+
+// MIT, telif bildiriminin butun kopyalarda yer almasini sart kosar - dagitilan jar da bir kopya.
+tasks.named("jar", Jar) {
+    from(file("LICENSE")) {
+        rename { "${it}_${mod_id}" }
+    }
+}

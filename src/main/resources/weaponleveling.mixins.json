@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "dev.weaponleveling.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ItemStackMixin"
+  ],
+  "client": [
+    "ItemStackFoilMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

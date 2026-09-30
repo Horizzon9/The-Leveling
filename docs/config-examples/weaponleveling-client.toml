@@ -1,0 +1,29 @@
+# Açıklama amaçlı örnek. Bu değerler yalnızca istemci sunumunu etkiler.
+[tooltip]
+expandedTooltipEnabled = true
+holdKeyToExpand = true
+showXpNumbers = true
+showXpPercentage = false
+showProgressBar = true
+showKeyHints = true
+showCombatStatistics = true
+progressBarSegments = 16 # 4-40
+colors = "default" # default veya high_contrast
+levelColor = "#FFD166"
+progressFilledColor = "#45D6A5"
+progressEmptyColor = "#3D4A5C"
+detailColor = "#A9B7C8"
+updateVanillaAttackDamageLine = true
+showRangedDamageMultiplier = true
+updateVanillaArmorLine = true
+attackDamageDisplayFormat = "total" # total veya base_plus_bonus
+
+[notification]
+levelUpSoundVolume = 1.0
+levelUpOverlayEnabled = true
+levelUpOverlayDurationMs = 5000
+
+[menu]
+showPauseSettingsButton = true
+pauseSettingsButtonRightOffset = 8
+pauseSettingsButtonTopOffset = 8

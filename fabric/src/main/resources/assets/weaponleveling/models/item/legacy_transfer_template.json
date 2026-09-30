@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "weaponleveling:item/legacy_transfer_template"
+  }
+}

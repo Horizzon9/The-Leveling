@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "OTO",
+    "OEO",
+    "OOO"
+  ],
+  "key": {
+    "O": { "item": "weaponleveling:end_amber_ingot" },
+    "T": { "item": "weaponleveling:legacy_transfer_template" },
+    "E": { "item": "minecraft:end_stone" }
+  },
+  "result": {
+    "id": "weaponleveling:legacy_transfer_template",
+    "count": 2
+  }
+}

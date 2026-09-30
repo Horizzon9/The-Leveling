@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "group": "end_amber_ingot",
+  "ingredient": {
+    "item": "weaponleveling:nether_amber_ore"
+  },
+  "result": {
+    "id": "weaponleveling:end_amber_ingot"
+  },
+  "experience": 1.0,
+  "cookingtime": 200
+}
