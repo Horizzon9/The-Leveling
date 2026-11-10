@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "II",
+    "PP",
+    "PP"
+  ],
+  "key": {
+    "I": "weaponleveling:end_amber_ingot",
+    "P": "#minecraft:planks"
+  },
+  "result": {
+    "id": "weaponleveling:legacy_transfer_table",
+    "count": 1
+  }
+}

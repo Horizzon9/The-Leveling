@@ -15,6 +15,12 @@
     ],
     "client": [
       "dev.weaponleveling.fabric.WeaponLevelingFabricClient"
+    ],
+    "jade": [
+      "dev.weaponleveling.integration.jade.WeaponLevelingJadePlugin"
+    ],
+    "modmenu": [
+      "dev.weaponleveling.fabric.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -27,6 +33,7 @@
     "fabric-api": "*"
   },
   "suggests": {
-    "jade": "*"
+    "jade": "*",
+    "modmenu": "*"
   }
 }

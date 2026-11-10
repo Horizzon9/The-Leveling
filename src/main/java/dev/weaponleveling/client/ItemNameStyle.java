@@ -7,7 +7,6 @@ import dev.weaponleveling.core.model.WeaponProgress;
 import dev.weaponleveling.integration.BrokenWeaponHandler;
 import dev.weaponleveling.integration.WeaponComponents;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -16,7 +15,7 @@ import java.util.List;
 /**
  * Cosmetic rewards for long use. They change only how an item looks, never how it fights:
  * the item name takes a milestone color as the item approaches the level cap, a given title is
- * shown under the name, and Relic or Legacy items shimmer like enchanted ones.
+ * shown under the name. The Relic and Legacy aura itself lives in {@link IdentityAura}.
  */
 public final class ItemNameStyle {
     private static final double[] MILESTONES = {0.10, 0.25, 0.50, 1.00};
@@ -58,16 +57,15 @@ public final class ItemNameStyle {
         return reached;
     }
 
-    /**
-     * Whether a Relic or Legacy item should shimmer. An explicit glint override set by a data pack,
-     * command or other mod always wins, and broken items stay dull.
-     */
-    public static boolean hasIdentityGlint(ItemStack stack) {
-        if (!ClientConfig.RELIC_GLINT.get() || stack.has(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)) {
-            return false;
+    /** The identity whose aura an item shows; broken items show none. */
+    public static LegacyTier identityTier(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return LegacyTier.NONE;
         }
         WeaponProgress progress = stack.get(WeaponComponents.PROGRESS.get());
-        return progress != null && progress.legacyTier() != LegacyTier.NONE
-                && !BrokenWeaponHandler.isMarkedBroken(stack);
+        if (progress == null || BrokenWeaponHandler.isMarkedBroken(stack)) {
+            return LegacyTier.NONE;
+        }
+        return progress.legacyTier();
     }
 }

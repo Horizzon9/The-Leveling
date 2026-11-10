@@ -96,11 +96,8 @@ public final class LegacyTransferMenu extends ItemCombinerMenu {
         if (stack.is(ModContent.LEGACY_TRANSFER_TEMPLATE.get())) {
             return TEMPLATE_SLOT;
         }
-        var progress = stack.get(WeaponComponents.PROGRESS.get());
-        if (progress != null && progress.totalXp() >= 2 && !getSlot(SOURCE_SLOT).hasItem()) {
-            return SOURCE_SLOT;
-        }
-        return TARGET_SLOT;
+        // Shift-clicked equipment fills the source first, then the target.
+        return getSlot(SOURCE_SLOT).hasItem() ? TARGET_SLOT : SOURCE_SLOT;
     }
 
     @Override

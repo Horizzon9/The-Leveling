@@ -27,5 +27,8 @@ final class ClientNetworkHandler {
         ClientPlayNetworking.registerGlobalReceiver(KillXpPayload.TYPE,
                 (payload, context) -> context.client().execute(
                         () -> ClientPayloadHandler.handleKillXp(payload)));
+        ClientPlayNetworking.registerGlobalReceiver(LowDurabilityWarningPayload.TYPE,
+                (payload, context) -> context.client().execute(
+                        () -> ClientPayloadHandler.handleLowDurabilityWarning(payload)));
     }
 }

@@ -1,0 +1,23 @@
+{
+  "parent": "weaponleveling:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:blaze_powder"
+    },
+    "title": {
+      "translate": "advancements.weaponleveling.kill_streak.title"
+    },
+    "description": {
+      "translate": "advancements.weaponleveling.kill_streak.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

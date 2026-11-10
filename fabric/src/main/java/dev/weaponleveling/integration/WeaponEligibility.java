@@ -10,10 +10,23 @@ import net.minecraft.world.item.UseAnim;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
 
 /** Determines whether an item is a levelable weapon without requiring hard dependencies on other mods. */
 public final class WeaponEligibility {
+    private static final List<Predicate<ItemStack>> EXTERNAL_WEAPON_SOURCES = new CopyOnWriteArrayList<>();
+
     private WeaponEligibility() {
+    }
+
+    /**
+     * Lets a companion mod mark items as weapons (for example everything Better Combat gives a weapon
+     * preset). Checked on both sides after the tags and regardless of auto-detection; excluded items and
+     * levelable tools stay out. Register once, during mod construction.
+     */
+    public static void registerWeaponSource(Predicate<ItemStack> source) {
+        EXTERNAL_WEAPON_SOURCES.add(source);
     }
 
     /** Default client-side compatibility: standard tags plus automatic external-weapon detection. */
@@ -64,6 +77,9 @@ public final class WeaponEligibility {
                 || stack.getItem() instanceof ProjectileWeaponItem) {
             return true;
         }
+        if (isFromWeaponSource(stack)) {
+            return true;
+        }
         if (!autoDetectExternalWeapons) {
             return false;
         }
@@ -85,6 +101,18 @@ public final class WeaponEligibility {
                 || stack.getItem() instanceof ProjectileWeaponItem
                 // Lets a config-added spear mod opt in without a hard dependency or a custom tag.
                 || stack.getUseAnimation() == UseAnim.SPEAR);
+    }
+
+    private static boolean isFromWeaponSource(ItemStack stack) {
+        if (EXTERNAL_WEAPON_SOURCES.isEmpty() || ToolEligibility.isEligible(stack)) {
+            return false;
+        }
+        for (Predicate<ItemStack> source : EXTERNAL_WEAPON_SOURCES) {
+            if (source.test(stack)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Dependency-free fallback for third-party melee weapons with non-standard item classes or tags. */

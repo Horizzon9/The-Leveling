@@ -33,7 +33,7 @@ public final class ArmorAttributeEvents {
         }
         WeaponProgress progress = armor.get(WeaponComponents.PROGRESS.get());
         int level = progress == null ? 0 : progress.level();
-        double bonus = ArmorLevelBonus.calculate(level, ServerConfig.ARMOR_FLAT_BONUS_PER_LEVEL.get(),
+        double bonus = ArmorLevelBonus.calculate(Math.min(level, ServerConfig.MAX_LEVEL.get()), ServerConfig.ARMOR_FLAT_BONUS_PER_LEVEL.get(),
                 ServerConfig.ARMOR_MAX_LEVEL_BONUS.get()).armor();
         if (bonus <= 0) {
             return;

@@ -15,6 +15,8 @@ import dev.weaponleveling.integration.WeaponDamage;
 import dev.weaponleveling.integration.WeaponEligibility;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -34,6 +36,7 @@ import java.util.WeakHashMap;
 @EventBusSubscriber(modid = WeaponLevelingMod.MOD_ID)
 public final class CombatEvents {
     private static final Map<LivingEntity, AttackContext> PENDING_ATTACKS = new WeakHashMap<>();
+    private static final Map<LivingEntity, AppliedAttack> APPLIED_ATTACKS = new WeakHashMap<>();
 
     private CombatEvents() {
     }
@@ -51,7 +54,7 @@ public final class CombatEvents {
         if (target == attacker) {
             return;
         }
-        AttackWeapon attackWeapon = resolveAttackWeapon(attacker, event.getSource().getDirectEntity());
+        AttackWeapon attackWeapon = resolveAttackWeapon(attacker, event.getSource());
         if (attackWeapon == null) {
             return;
         }
@@ -75,18 +78,33 @@ public final class CombatEvents {
                 && (!attacker.isCreative() || ServerConfig.ALLOW_CREATIVE_PROGRESS.get());
         if (progressionAllowed) {
             PENDING_ATTACKS.put(target, new AttackContext(attacker.getUUID(), progress.instanceId(),
-                    weapon, attackWeapon.rangedAttack(), target.getHealth()));
+                    weapon, attackWeapon.rangedAttack(), target.getHealth(), event.getSource()));
         }
     }
 
     @SubscribeEvent
     public static void onDamageApplied(LivingDamageEvent.Post event) {
         AttackContext attack = PENDING_ATTACKS.remove(event.getEntity());
-        if (attack == null || !(event.getSource().getEntity() instanceof ServerPlayer attacker)
+        if (attack != null && attack.source() == event.getSource()) {
+            APPLIED_ATTACKS.put(event.getEntity(), new AppliedAttack(attack, event.getNewDamage(),
+                    event.getEntity().isDeadOrDying() || event.getNewDamage() >= attack.preHitHealth()));
+        }
+    }
+
+    public static void finishAttack(LivingEntity target, DamageSource source) {
+        // Clear rejected/fully absorbed hits as well, so a later hit cannot reuse their context.
+        PENDING_ATTACKS.remove(target);
+        AppliedAttack applied = APPLIED_ATTACKS.remove(target);
+        if (applied == null) {
+            return;
+        }
+        AttackContext attack = applied.attack();
+        if (attack.source() != source
+                || !(source.getEntity() instanceof ServerPlayer attacker)
                 || !attacker.getUUID().equals(attack.attackerId())) {
             return;
         }
-        Entity directEntity = event.getSource().getDirectEntity();
+        Entity directEntity = source.getDirectEntity();
         ItemStack weapon = attack.weapon();
         WeaponProgress progress = attack.rangedAttack() == null
                 ? weapon.get(WeaponComponents.PROGRESS.get())
@@ -97,18 +115,21 @@ public final class CombatEvents {
         }
 
         double actualDamage = ServerConfig.ENABLE_ANTI_ABUSE.get()
-                ? Math.max(0, Math.min(attack.preHitHealth(), event.getNewDamage()))
-                : Math.max(0, event.getNewDamage());
+                ? Math.max(0, Math.min(attack.preHitHealth(), applied.damage()))
+                : Math.max(0, applied.damage());
         if (actualDamage <= 0) {
             return;
         }
-        boolean killed = event.getEntity().isDeadOrDying() || event.getEntity().getHealth() <= 0;
+        // XP only for a real death. A hit that exceeds the target's health but leaves it alive (training
+        // dummies, totems, invulnerable targets) is not a kill and must never pay out.
+        boolean killed = applied.fatalHit() && target.isDeadOrDying();
+        boolean awardXp = killed;
         // A player kill uses the same base kill XP as a normal zombie: no special PvP multiplier.
-        double entityMultiplier = event.getEntity() instanceof Player ? 1.0 : entityMultiplier(event.getEntity());
+        double entityMultiplier = target instanceof Player ? 1.0 : entityMultiplier(target);
         // Bosses are not multiplied a second time: their maximum health already determines their reward.
         double bossMultiplier = 1.0;
         KillStreak streak = killed ? KillStreakTracker.recordKill(attacker, progress.instanceId()) : null;
-        long earnedXp = XpAwardCalculator.calculate(ServerConfig.KILL_XP_ENABLED.get(), killed,
+        long earnedXp = XpAwardCalculator.calculate(ServerConfig.KILL_XP_ENABLED.get(), awardXp,
                 ServerConfig.KILL_BONUS.get(), entityMultiplier, bossMultiplier,
                 KillStreakTracker.xpMultiplier(streak), ServerConfig.MAX_XP_PER_ATTACK.get());
 
@@ -120,28 +141,37 @@ public final class CombatEvents {
         } else {
             RangedWeaponTracker.saveProgress(attack.rangedAttack(), directEntity, attacker, result.progress());
         }
+        ChronicleService.recordFeats(weapon, attack.rangedAttack(), directEntity, attacker, target, applied.damage(),
+                streak == null ? 0 : streak.count());
         boolean identityUnlocked = result.progress().legacyTier().ordinal() > progress.legacyTier().ordinal();
         int masteryTier = killed ? ChronicleService.recordKill(weapon, attack.rangedAttack(), directEntity, attacker,
-                event.getEntity(), identityUnlocked ? result.progress().legacyTier() : LegacyTier.NONE) : 0;
+                target, identityUnlocked ? result.progress().legacyTier() : LegacyTier.NONE) : 0;
         attacker.inventoryMenu.broadcastChanges();
         if (earnedXp > 0) {
             PacketDistributor.sendToPlayer(attacker, new KillXpPayload(earnedXp, streak == null ? 0 : streak.count()));
+            ArmorProgressEvents.shareWeaponXp(attacker, earnedXp);
         }
         if (result.levelsGained() > 0) {
             LevelUpNotifier.notify(attacker, weapon, result.progress().level(), result.progress().legacyTier(),
                     identityUnlocked);
         }
         if (masteryTier > 0) {
-            ChronicleService.announceMastery(attacker, weapon, event.getEntity(), masteryTier);
+            ChronicleService.announceMastery(attacker, weapon, target, masteryTier);
+        }
+        if (killed && result.progress().legacyTier() == LegacyTier.LEGACY) {
+            LegacyEffects.killBurst(target);
         }
         ModAdvancements.onProgress(attacker, result);
-        ModAdvancements.onWeaponKill(attacker, masteryTier, streak);
+        if (killed) {
+            ModAdvancements.onWeaponKill(attacker, masteryTier, streak);
+        }
         if (earnedXp > 0) {
             WeaponLeaderboard.record(attacker, weapon, result.progress());
         }
     }
 
-    private static AttackWeapon resolveAttackWeapon(ServerPlayer attacker, Entity directEntity) {
+    private static AttackWeapon resolveAttackWeapon(ServerPlayer attacker, DamageSource source) {
+        Entity directEntity = source.getDirectEntity();
         RangedWeaponTracker.RangedAttack rangedAttack = RangedWeaponTracker.findTrackedAttack(directEntity,
                 attacker.getUUID());
         if (rangedAttack != null) {
@@ -151,6 +181,11 @@ public final class CombatEvents {
             }
         }
 
+        // The held item only gets credit for real melee swings. Spells, magic, thorns and other mods'
+        // indirect damage name the player as attacker but are not made with the weapon in hand.
+        if (directEntity != attacker || !source.is(DamageTypes.PLAYER_ATTACK)) {
+            return null;
+        }
         ItemStack weapon = attacker.getMainHandItem();
         if (!WeaponEligibility.isEligibleOnServer(weapon) || BrokenWeaponHandler.isBroken(weapon)) {
             return null;
@@ -169,10 +204,15 @@ public final class CombatEvents {
                 ServerConfig.ENTITY_MULTIPLIERS.get());
     }
 
+    private record AppliedAttack(AttackContext attack, float damage, boolean fatalHit) {
+    }
+
     private record AttackWeapon(ItemStack weapon, WeaponProgress progress, RangedWeaponTracker.RangedAttack rangedAttack) {
     }
 
+    /** {@code source} ties the context to one damage call: a later spell or DoT on the same target must not reuse it. */
     private record AttackContext(UUID attackerId, UUID weaponInstanceId, ItemStack weapon,
-                                 RangedWeaponTracker.RangedAttack rangedAttack, float preHitHealth) {
+                                 RangedWeaponTracker.RangedAttack rangedAttack, float preHitHealth,
+                                 DamageSource source) {
     }
 }

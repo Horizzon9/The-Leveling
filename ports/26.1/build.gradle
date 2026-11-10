@@ -1,0 +1,176 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_archive_name}-neoforge-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+sourceSets.main.resources {
+    srcDir('src/generated/resources')
+}
+
+// Test-only commands live in a separate source set. They are loaded only when
+// Gradle is invoked with -PdevTools and are packaged exclusively by devJar.
+sourceSets {
+    dev {
+        java.srcDir('src/dev/java')
+        // ModDevGradle contributes the mapped Minecraft/NeoForge classpath to
+        // main; copy it as well as main's compiled project classes.
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+configurations.named('devImplementation') {
+    extendsFrom(configurations.implementation)
+}
+configurations.named('devCompileOnly') {
+    extendsFrom(configurations.compileOnly)
+}
+configurations.named('devRuntimeOnly') {
+    extendsFrom(configurations.runtimeOnly)
+}
+
+// `-PdevTools` is intentionally a presence flag: it may be passed without an
+// explicit value, so an empty property still means developer tools are on.
+def devToolsEnabled = providers.gradleProperty('devTools')
+        .map { true }
+        .orElse(false)
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://api.modrinth.com/maven' }
+}
+
+neoForge {
+    version = project.neo_version
+
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output',
+                    file('src/generated/resources/').absolutePath, '--existing',
+                    file('src/main/resources/').absolutePath
+        }
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+            if (devToolsEnabled.get()) {
+                sourceSet(sourceSets.dev)
+            }
+        }
+    }
+
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
+}
+
+dependencies {
+    // Optional runtime integration: Jade discovers the annotated plugin only when it is installed.
+    compileOnly 'maven.modrinth:jade:26.1.12+neoforge'
+    // Development-only: load Jade in runClient without bundling it into this mod's JAR.
+    // runtimeOnly disabled for beta NeoForge: Jade is incompatible with the 26.1/26.1.1 beta builds
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+tasks.register('devJar', Jar) {
+    group = 'build'
+    description = 'Builds a development-only JAR containing /weaponleveldev test commands.'
+    archiveClassifier = 'dev'
+    from sourceSets.main.output
+    from sourceSets.dev.output
+    dependsOn tasks.named('classes')
+    dependsOn tasks.named('devClasses')
+}
+
+// A development client must compile the dev source set before ModDevGradle
+// assembles the runtime classpath; the normal runClient task remains unchanged.
+if (devToolsEnabled.get()) {
+    tasks.named('runClient') {
+        dependsOn tasks.named('devClasses')
+    }
+}
+
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProperties = [
+            minecraft_version: minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version: neo_version,
+            loader_version_range: loader_version_range,
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_license: mod_license,
+            mod_version: mod_version
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into layout.buildDirectory.dir('generated/sources/modMetadata')
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+
+tasks.withType(ProcessResources).configureEach {
+    filteringCharset = 'UTF-8'
+}
+
+// MIT, telif bildiriminin "butun kopyalarda" yer almasini sart kosar - dagitilan jar da bir
+// kopyadir. Boylece lisans bilgisi yalnizca mods.toml'daki tek kelimeye ve magaza sayfasina
+// bagli kalmaz; artefaktin kendisi tam metni tasir. Dosya adina mod kimligi eklenir (NeoForge
+// MDK deseni) - aksi halde bir modpack acildiginda farkli modlarin LICENSE dosyalari ayirt
+// edilemezdi.
+tasks.named('jar', Jar) {
+    // Read at configuration time: the configuration cache cannot resolve project properties later.
+    def licenseSuffix = project.mod_id
+    from(file('LICENSE')) {
+        rename { "${it}_${licenseSuffix}" }
+    }
+}
+
+idea.module {
+    downloadSources = true
+    downloadJavadoc = true
+}

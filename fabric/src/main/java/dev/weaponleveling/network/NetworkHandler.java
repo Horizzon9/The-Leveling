@@ -29,6 +29,7 @@ public final class NetworkHandler {
         PayloadTypeRegistry.playS2C().register(ServerSettingsPayload.TYPE, ServerSettingsPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(LevelUpSealPayload.TYPE, LevelUpSealPayload.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(KillXpPayload.TYPE, KillXpPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(LowDurabilityWarningPayload.TYPE, LowDurabilityWarningPayload.STREAM_CODEC);
 
         PayloadTypeRegistry.playC2S().register(RequestServerSettingsPayload.TYPE,
                 RequestServerSettingsPayload.STREAM_CODEC);

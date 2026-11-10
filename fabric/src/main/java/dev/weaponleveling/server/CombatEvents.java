@@ -30,6 +30,7 @@ import java.util.WeakHashMap;
 
 public final class CombatEvents {
     private static final Map<LivingEntity, AttackContext> PENDING_ATTACKS = new WeakHashMap<>();
+    private static final Map<LivingEntity, AppliedAttack> APPLIED_ATTACKS = new WeakHashMap<>();
 
     private CombatEvents() {
     }
@@ -70,7 +71,7 @@ public final class CombatEvents {
                 && (!attacker.isCreative() || ServerConfig.ALLOW_CREATIVE_PROGRESS.get());
         if (progressionAllowed) {
             PENDING_ATTACKS.put(target, new AttackContext(attacker.getUUID(), progress.instanceId(),
-                    weapon, attackWeapon.rangedAttack(), target.getHealth()));
+                    weapon, attackWeapon.rangedAttack(), target.getHealth(), source));
         }
         // The incoming amount already includes special weapon calculations. This preserves a mace's
         // fall-based smash bonus, thrown-trident impact damage, and compatible spear projectile damage.
@@ -80,7 +81,22 @@ public final class CombatEvents {
 
     private static void onDamageApplied(LivingEntity target, DamageSource source, float appliedDamage) {
         AttackContext attack = PENDING_ATTACKS.remove(target);
-        if (attack == null || !(source.getEntity() instanceof ServerPlayer attacker)
+        if (attack != null && attack.source() == source) {
+            APPLIED_ATTACKS.put(target, new AppliedAttack(attack, appliedDamage,
+                    target.isDeadOrDying() || appliedDamage >= attack.preHitHealth()));
+        }
+    }
+
+    public static void finishAttack(LivingEntity target, DamageSource source) {
+        // Clear rejected/fully absorbed hits as well, so a later hit cannot reuse their context.
+        PENDING_ATTACKS.remove(target);
+        AppliedAttack applied = APPLIED_ATTACKS.remove(target);
+        if (applied == null) {
+            return;
+        }
+        AttackContext attack = applied.attack();
+        if (attack.source() != source
+                || !(source.getEntity() instanceof ServerPlayer attacker)
                 || !attacker.getUUID().equals(attack.attackerId())) {
             return;
         }
@@ -95,18 +111,21 @@ public final class CombatEvents {
         }
 
         double actualDamage = ServerConfig.ENABLE_ANTI_ABUSE.get()
-                ? Math.max(0, Math.min(attack.preHitHealth(), appliedDamage))
-                : Math.max(0, appliedDamage);
+                ? Math.max(0, Math.min(attack.preHitHealth(), applied.damage()))
+                : Math.max(0, applied.damage());
         if (actualDamage <= 0) {
             return;
         }
-        boolean killed = target.isDeadOrDying() || target.getHealth() <= 0;
+        boolean killed = applied.fatalHit() && target.isDeadOrDying();
+        // XP only for a real death: a hit above the target's health that leaves it alive (training dummies,
+        // totems, invulnerable targets) is not a kill and must never pay out.
+        boolean awardXp = killed;
         // A player kill uses the same base kill XP as a normal zombie: no special PvP multiplier.
         double entityMultiplier = target instanceof Player ? 1.0 : entityMultiplier(target);
         // Bosses are not multiplied a second time: their maximum health already determines their reward.
         double bossMultiplier = 1.0;
         KillStreak streak = killed ? KillStreakTracker.recordKill(attacker, progress.instanceId()) : null;
-        long earnedXp = XpAwardCalculator.calculate(ServerConfig.KILL_XP_ENABLED.get(), killed,
+        long earnedXp = XpAwardCalculator.calculate(ServerConfig.KILL_XP_ENABLED.get(), awardXp,
                 ServerConfig.KILL_BONUS.get(), entityMultiplier, bossMultiplier,
                 KillStreakTracker.xpMultiplier(streak), ServerConfig.MAX_XP_PER_ATTACK.get());
 
@@ -118,6 +137,8 @@ public final class CombatEvents {
         } else {
             RangedWeaponTracker.saveProgress(attack.rangedAttack(), directEntity, attacker, result.progress());
         }
+        ChronicleService.recordFeats(weapon, attack.rangedAttack(), directEntity, attacker, target, applied.damage(),
+                streak == null ? 0 : streak.count());
         boolean identityUnlocked = result.progress().legacyTier().ordinal() > progress.legacyTier().ordinal();
         int masteryTier = killed ? ChronicleService.recordKill(weapon, attack.rangedAttack(), directEntity, attacker,
                 target, identityUnlocked ? result.progress().legacyTier() : LegacyTier.NONE) : 0;
@@ -132,8 +153,13 @@ public final class CombatEvents {
         if (masteryTier > 0) {
             ChronicleService.announceMastery(attacker, weapon, target, masteryTier);
         }
+        if (killed && result.progress().legacyTier() == LegacyTier.LEGACY) {
+            LegacyEffects.killBurst(target);
+        }
         ModAdvancements.onProgress(attacker, result);
-        ModAdvancements.onWeaponKill(attacker, masteryTier, streak);
+        if (killed) {
+            ModAdvancements.onWeaponKill(attacker, masteryTier, streak);
+        }
         if (earnedXp > 0) {
             WeaponLeaderboard.record(attacker, weapon, result.progress());
         }
@@ -167,10 +193,15 @@ public final class CombatEvents {
                 ServerConfig.ENTITY_MULTIPLIERS.get());
     }
 
+    private record AppliedAttack(AttackContext attack, float damage, boolean fatalHit) {
+    }
+
     private record AttackWeapon(ItemStack weapon, WeaponProgress progress, RangedWeaponTracker.RangedAttack rangedAttack) {
     }
 
+    /** {@code source} ties the context to one damage call: a later spell or DoT on the same target must not reuse it. */
     private record AttackContext(UUID attackerId, UUID weaponInstanceId, ItemStack weapon,
-                                 RangedWeaponTracker.RangedAttack rangedAttack, float preHitHealth) {
+                                 RangedWeaponTracker.RangedAttack rangedAttack, float preHitHealth,
+                                 DamageSource source) {
     }
 }

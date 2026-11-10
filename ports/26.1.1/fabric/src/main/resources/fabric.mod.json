@@ -1,0 +1,39 @@
+{
+    "schemaVersion":  1,
+    "id":  "${mod_id}",
+    "version":  "${version}",
+    "name":  "${mod_name}",
+    "description":  "Server-authoritative per-item leveling for weapons and armor. Earn XP through combat, build lasting Relic and Legacy equipment, recover Broken gear, and transfer hard-earned progress between compatible items.",
+    "authors":  [
+                    "${mod_author}"
+                ],
+    "license":  "${mod_license}",
+    "environment":  "*",
+    "entrypoints":  {
+                        "main":  [
+                                     "dev.weaponleveling.fabric.WeaponLevelingFabric"
+                                 ],
+                        "client":  [
+                                       "dev.weaponleveling.fabric.WeaponLevelingFabricClient"
+                                   ],
+                        "jade":  [
+                                     "dev.weaponleveling.integration.jade.WeaponLevelingJadePlugin"
+                                 ],
+                        "modmenu":  [
+                                        "dev.weaponleveling.fabric.ModMenuIntegration"
+                                    ]
+                    },
+    "mixins":  [
+                   "weaponleveling.mixins.json"
+               ],
+    "depends":  {
+                    "fabricloader":  "\u003e=${fabric_loader_version}",
+                    "minecraft":  "~${minecraft_version}",
+                    "java":  "\u003e=25",
+                    "fabric-api":  "*"
+                },
+    "suggests":  {
+                     "jade":  "*",
+                     "modmenu":  "*"
+                 }
+}

@@ -25,6 +25,8 @@ public final class NetworkHandler {
                         NetworkHandler::handleLevelUpSeal)
                 .playToClient(KillXpPayload.TYPE, KillXpPayload.STREAM_CODEC,
                         NetworkHandler::handleKillXp)
+                .playToClient(LowDurabilityWarningPayload.TYPE, LowDurabilityWarningPayload.STREAM_CODEC,
+                        NetworkHandler::handleLowDurabilityWarning)
                 .playToServer(RequestServerSettingsPayload.TYPE, RequestServerSettingsPayload.STREAM_CODEC,
                         NetworkHandler::handleServerSettingsRequest)
                 .playToServer(UpdateServerSettingsPayload.TYPE, UpdateServerSettingsPayload.STREAM_CODEC,
@@ -48,6 +50,12 @@ public final class NetworkHandler {
     private static void handleKillXp(KillXpPayload payload, IPayloadContext context) {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             ClientPayloadHandler.handleKillXp(payload);
+        }
+    }
+
+    private static void handleLowDurabilityWarning(LowDurabilityWarningPayload payload, IPayloadContext context) {
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            ClientPayloadHandler.handleLowDurabilityWarning(payload);
         }
     }
 

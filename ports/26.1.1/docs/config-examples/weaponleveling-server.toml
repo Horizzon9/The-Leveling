@@ -1,0 +1,46 @@
+# Açıklama amaçlı örnek. Gerçek dosyayı NeoForge dünya serverconfig dizininde üretir.
+[progression]
+maxLevel = 500
+baseXp = 100 # Seviye 0'dan 1'e geçiş için XP.
+growthFactor = 1.02432611896515 # Her sonraki seviye öncekinden yaklaşık %2,433 daha fazla XP ister; 0'dan 500'e toplam yaklaşık 680,8 milyon XP gerekir.
+xpTable = []
+allowCreativeProgress = false
+
+[xp]
+killXpEnabled = true
+playerKillXpEnabled = false # Açılırsa oyuncu öldürmek normal mob öldürmesiyle aynı XP'yi verir.
+killBonus = 5.0 # Her mob öldürmede temel silah XP'si.
+bossMultiplier = 2.0
+entityMultipliers = []
+maxXpPerAttack = 10000 # Bir mob öldürmeden kazanılabilecek üst XP sınırı.
+enableAntiAbuse = true
+
+[armor]
+levelingEnabled = true
+xpPerDamage = 1.0
+maxXpPerDamageEvent = 10000
+levelBonusEnabled = true
+flatBonusPerLevel = 0.004 # Seviye 0 tabanında parça başına +2 Armor tavanına seviye 500'de ulaşır.
+maxLevelBonus = 2.0
+
+[damage]
+levelBonusEnabled = true
+levelBonusMaxMultiplier = 11.0 # Seviye 500'de silahın kendi başlangıç hasarını 11 katına çıkarır: 7 hasar 77, 14 hasar 154 olur.
+levelBonusCurveExponent = 1.05 # Hafif üstel şekil; ilk 10 seviyede 7 hasarlı silaha yaklaşık +1 hasar ekler.
+
+[compatibility]
+autoDetectExternalWeapons = true
+additionalWeaponItems = [] # Örnek: ["examplemod:example_weapon"]
+excludedWeaponItems = [] # Otomatik algılanan bir aracı hariç tutmak için kullanılır.
+
+[notification]
+levelUp = "seal" # seal (hotbar üstü bildirim), actionbar, chat, off
+
+[commands]
+permissionLevel = 2 # 0-4; 2 is the normal operator level.
+allowInGameConfiguration = true # Yetkili oyuncular ESC > WL menüsünden ayar yapabilir.
+allowLevelCommands = true
+allowLevelReduction = true # Seviye 0'a inmeye izin verir; negatif seviyeye asla izin vermez.
+allowXpCommands = true
+allowXpReduction = true # Controls /weaponlevel setxp reductions separately.
+maxXp = 1000000000 # 500 seviye eğrisinin yaklaşık 680,8 milyon XP tavanını karşılar.

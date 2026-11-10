@@ -1,0 +1,79 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "${loom_version}"
+    id "java"
+}
+
+group = mod_group_id
+version = mod_version
+
+base {
+    archivesName = "${mod_archive_name}-fabric-${minecraft_version}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 25
+}
+
+repositories {
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+        content { includeGroup "maven.modrinth" }
+    }
+    maven {
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/releases/"
+        content { includeGroup "com.terraformersmc" }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    include(implementation("com.electronwill.night-config:core:${night_config_version}"))
+    include(implementation("com.electronwill.night-config:toml:${night_config_version}"))
+
+    compileOnly "maven.modrinth:jade:${jade_version}"
+
+    // Mod Menu yalnizca kuruluysa ayarlar dugmesini saglar; zorunlu bagimlilik degildir.
+    compileOnly "com.terraformersmc:modmenu:${modmenu_version}"
+}
+
+processResources {
+    inputs.property "version", version
+    inputs.property "mod_id", mod_id
+    inputs.property "mod_name", mod_name
+    inputs.property "mod_license", mod_license
+    inputs.property "mod_author", mod_author
+    inputs.property "minecraft_version", minecraft_version
+    inputs.property "fabric_loader_version", fabric_loader_version
+
+    filesMatching("fabric.mod.json") {
+        expand([
+            version: version,
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_license: mod_license,
+            mod_author: mod_author,
+            minecraft_version: minecraft_version,
+            fabric_loader_version: fabric_loader_version
+        ])
+    }
+}
+
+tasks.named("jar", Jar) {
+    from(file("LICENSE")) {
+        rename { "${it}_${mod_id}" }
+    }
+}

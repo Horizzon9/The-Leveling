@@ -41,9 +41,9 @@ public final class ClientConfig {
     public static final ModConfigSpec.BooleanValue MILESTONE_NAME_COLORS = BUILDER
             .comment("Colors an item's name as it approaches the level cap: green at 10%, aqua at 25%, purple at 50% and gold at 100%.")
             .define("visual.milestoneNameColors", true);
-    public static final ModConfigSpec.BooleanValue RELIC_GLINT = BUILDER
-            .comment("Relic and Legacy items shimmer like enchanted items.")
-            .define("visual.relicGlint", true);
+    public static final ModConfigSpec.BooleanValue IDENTITY_AURA = BUILDER
+            .comment("Relic and Legacy items show an amber aura: pulsing corner brackets in inventories (with a circling spark for Legacy) and amber dust rising from the hand of players holding them.")
+            .define("visual.identityAura", true);
     public static final ModConfigSpec.IntValue PROGRESS_BAR_SEGMENTS = BUILDER
             .comment("Number of segments in the tooltip progress bar.")
             .defineInRange("tooltip.progressBarSegments", 16, 4, 40);
@@ -71,6 +71,9 @@ public final class ClientConfig {
     public static final ModConfigSpec.IntValue KILL_XP_OVERLAY_DURATION_MS = BUILDER
             .comment("How long the kill XP notification stays on screen.")
             .defineInRange("notification.killXpOverlayDurationMs", 1_200, 400, 5_000);
+    public static final ModConfigSpec.BooleanValue SHOW_LOW_DURABILITY_WARNING = BUILDER
+            .comment("Shows an action bar warning when a weapon, tool, or armor item is close to breaking.")
+            .define("notification.showLowDurabilityWarning", true);
     public static final ModConfigSpec.BooleanValue CHAT_SHARE_ENABLED = BUILDER
             .comment("Allows Shift + middle click on an eligible item to share it in chat.")
             .define("interaction.chatShareEnabled", true);
@@ -78,19 +81,19 @@ public final class ClientConfig {
             .comment("How long the compact level seal stays on screen. Values are in milliseconds.")
             .defineInRange("notification.levelUpOverlayDurationMs", 5_000, 3_000, 10_000);
     public static final ModConfigSpec.BooleanValue UPDATE_VANILLA_ATTACK_DAMAGE_LINE = BUILDER
-            .comment("Replaces the eligible weapon's green vanilla Attack Damage line with its level-adjusted value.")
+            .comment("Replaces the eligible weapon's green vanilla Attack Damage line with its level-adjusted value. Neighbouring flat damage-modifier lines are folded into that one summed line.")
             .define("tooltip.updateVanillaAttackDamageLine", true);
     public static final ModConfigSpec.BooleanValue SHOW_RANGED_DAMAGE_MULTIPLIER = BUILDER
             .comment("Shows the level-adjusted damage preview for every eligible weapon. Ranged previews use a fully drawn standard-arrow shot.")
             .define("tooltip.showRangedDamageMultiplier", true);
     public static final ModConfigSpec.BooleanValue UPDATE_VANILLA_ARMOR_LINE = BUILDER
-            .comment("Replaces the eligible armor's green vanilla Armor line with its level-adjusted value.")
+            .comment("Replaces the eligible armor's green vanilla Armor line with its level-adjusted value. Neighbouring flat armor-modifier lines are folded into that one summed line.")
             .define("tooltip.updateVanillaArmorLine", true);
     public static final ModConfigSpec.ConfigValue<String> ATTACK_DAMAGE_DISPLAY_FORMAT = BUILDER
             .comment("Display-only format: base_plus_bonus or total.")
             .define("tooltip.attackDamageDisplayFormat", "total", ClientConfig::isAttackDamageDisplayFormat);
     public static final ModConfigSpec.BooleanValue SHOW_PAUSE_SETTINGS_BUTTON = BUILDER
-            .comment("Adds the compact Weapon Leveling button to the pause menu.")
+            .comment("Adds the compact The Leveling button to the pause menu.")
             .define("menu.showPauseSettingsButton", true);
     public static final ModConfigSpec.IntValue PAUSE_SETTINGS_BUTTON_RIGHT_OFFSET = BUILDER
             .comment("Distance from the pause menu's right edge for the compact settings button.")

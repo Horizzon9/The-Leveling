@@ -3,10 +3,12 @@
   "package": "dev.weaponleveling.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ItemStackMixin"
-  ],
-  "client": [
-    "ItemStackFoilMixin"
+    "ItemStackMixin",
+    "PlayerSoulboundMixin",
+    "PlayerShieldMixin",
+    "LivingEntityCombatMixin",
+    "MendingSupportMixin",
+    "MendingCommandMixin"
   ],
   "injectors": {
     "defaultRequire": 1

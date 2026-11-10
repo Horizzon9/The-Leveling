@@ -3,6 +3,9 @@ package dev.weaponleveling.core.xp;
 import java.util.List;
 
 public final class XpCurve {
+    /** Level cap the default growth factor was tuned for. */
+    public static final int REFERENCE_MAX_LEVEL = 500;
+
     private final int maxLevel;
     private final long baseXp;
     private final double growthFactor;
@@ -19,6 +22,27 @@ public final class XpCurve {
         if (this.levelTable.stream().anyMatch(value -> value == null || value < 1)) {
             throw new IllegalArgumentException("XP table values must be positive");
         }
+    }
+
+    /**
+     * Growth factor that keeps the curve's shape for any level cap: requirement(level) becomes
+     * baseXp * growthFactor^(level * 500 / maxLevel). The last level then costs the same as the last
+     * level of the 500-level default, and total XP grows in proportion to the cap instead of exponentially.
+     */
+    public static double scaledGrowthFactor(double growthFactor, int maxLevel) {
+        if (maxLevel <= 0 || !Double.isFinite(growthFactor) || growthFactor <= 1.0) {
+            return growthFactor;
+        }
+        return Math.pow(growthFactor, REFERENCE_MAX_LEVEL / (double) maxLevel);
+    }
+
+    /** Scales one XP requirement, never below 1 XP. */
+    public static long scaleRequirement(long xp, double multiplier) {
+        double scaled = xp * multiplier;
+        if (!Double.isFinite(scaled) || scaled >= Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(1, Math.round(scaled));
     }
 
     public int maxLevel() {

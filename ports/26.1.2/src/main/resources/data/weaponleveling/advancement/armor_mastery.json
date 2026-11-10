@@ -1,0 +1,23 @@
+{
+  "parent": "weaponleveling:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:iron_chestplate"
+    },
+    "title": {
+      "translate": "advancements.weaponleveling.armor_mastery.title"
+    },
+    "description": {
+      "translate": "advancements.weaponleveling.armor_mastery.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

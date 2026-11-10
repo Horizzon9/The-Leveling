@@ -89,7 +89,7 @@ public final class ChatShareService {
     private static Component armorStatistic(ItemStack stack, int level) {
         double armor = BrokenWeaponHandler.isBroken(stack) ? 0 : ArmorProtection.baseArmor(stack);
         if (armor > 0 && ServerConfig.ARMOR_LEVEL_BONUS_ENABLED.get()) {
-            armor += ArmorLevelBonus.calculate(level, ServerConfig.ARMOR_FLAT_BONUS_PER_LEVEL.get(),
+            armor += ArmorLevelBonus.calculate(Math.min(level, ServerConfig.MAX_LEVEL.get()), ServerConfig.ARMOR_FLAT_BONUS_PER_LEVEL.get(),
                     ServerConfig.ARMOR_MAX_LEVEL_BONUS.get()).armor();
         }
         return Component.translatable("message.weaponleveling.shared_armor", format(armor));

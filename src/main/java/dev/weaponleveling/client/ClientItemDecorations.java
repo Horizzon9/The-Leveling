@@ -32,6 +32,7 @@ public final class ClientItemDecorations implements IItemDecorator {
         if (ClientConfig.SHOW_BROKEN_SLOT_OVERLAY.get() && BrokenWeaponHandler.isMarkedBroken(stack)) {
             drawBrokenOverlay(graphics, x, y);
         }
+        IdentityAura.drawSlot(graphics, stack, x, y);
         return false;
     }
 

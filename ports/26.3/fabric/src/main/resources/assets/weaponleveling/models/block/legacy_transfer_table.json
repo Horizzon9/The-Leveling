@@ -1,0 +1,24 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "weaponleveling:block/legacy_transfer_table_front",
+    "top": "weaponleveling:block/legacy_transfer_table_top",
+    "front": "weaponleveling:block/legacy_transfer_table_front",
+    "side": "weaponleveling:block/legacy_transfer_table_side",
+    "bottom": "weaponleveling:block/legacy_transfer_table_back"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "#bottom", "cullface": "down" },
+        "up": { "texture": "#top", "cullface": "up" },
+        "north": { "texture": "#front", "cullface": "north" },
+        "south": { "texture": "#front", "cullface": "south" },
+        "west": { "texture": "#side", "cullface": "west" },
+        "east": { "texture": "#side", "cullface": "east" }
+      }
+    }
+  ]
+}

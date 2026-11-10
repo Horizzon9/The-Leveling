@@ -2,6 +2,7 @@ package dev.weaponleveling.client;
 
 import dev.weaponleveling.config.ClientConfig;
 import dev.weaponleveling.core.chronicle.ChronicleEntry;
+import dev.weaponleveling.core.chronicle.ChronicleRecords;
 import dev.weaponleveling.core.chronicle.RomanNumerals;
 import dev.weaponleveling.core.chronicle.WeaponChronicle;
 import dev.weaponleveling.integration.WeaponComponents;
@@ -15,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -70,6 +72,19 @@ public final class ChronicleTooltip {
             }
             lines.add(detail(prefix, line, color));
         }
+        ChronicleRecords records = chronicle.records();
+        if (records.strongestHit() > 0) {
+            lines.add(detail(prefix, Component.translatable("tooltip.weaponleveling.chronicle.strongest_hit",
+                    oneDecimal(records.strongestHit())), color));
+        }
+        if (records.longestShot() > 0) {
+            lines.add(detail(prefix, Component.translatable("tooltip.weaponleveling.chronicle.longest_shot",
+                    oneDecimal(records.longestShot())), color));
+        }
+        if (records.longestStreak() >= 2) {
+            lines.add(detail(prefix, Component.translatable("tooltip.weaponleveling.chronicle.longest_streak",
+                    records.longestStreak()), color));
+        }
         chronicle.first(ChronicleEntry.Kind.FIRST_KILL).ifPresent(entry -> lines.add(detail(prefix,
                 Component.translatable("tooltip.weaponleveling.chronicle.first_kill",
                         foeName(entry.subject()), entry.day()), color)));
@@ -80,6 +95,10 @@ public final class ChronicleTooltip {
         chronicle.first(ChronicleEntry.Kind.TITLED).ifPresent(entry -> lines.add(detail(prefix,
                 Component.translatable("tooltip.weaponleveling.chronicle.titled", entry.day()), color)));
         return List.copyOf(lines);
+    }
+
+    private static String oneDecimal(double value) {
+        return String.format(Locale.ROOT, "%.1f", value);
     }
 
     private static Component detail(String prefix, MutableComponent content, int color) {

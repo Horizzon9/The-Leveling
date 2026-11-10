@@ -3,6 +3,7 @@ package dev.weaponleveling.integration;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.weaponleveling.core.chronicle.ChronicleEntry;
+import dev.weaponleveling.core.chronicle.ChronicleRecords;
 import dev.weaponleveling.core.chronicle.WeaponChronicle;
 
 import java.util.LinkedHashMap;
@@ -25,13 +26,20 @@ public final class WeaponChronicleCodecs {
             Codec.LONG.optionalFieldOf("day", 0L).forGetter(RawEntry::day)
     ).apply(instance, RawEntry::new));
 
+    private static final Codec<ChronicleRecords> RECORDS_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.DOUBLE.optionalFieldOf("strongest_hit", 0.0).forGetter(ChronicleRecords::strongestHit),
+            Codec.DOUBLE.optionalFieldOf("longest_shot", 0.0).forGetter(ChronicleRecords::longestShot),
+            Codec.INT.optionalFieldOf("longest_streak", 0).forGetter(ChronicleRecords::longestStreak)
+    ).apply(instance, ChronicleRecords::new));
+
     private static final Codec<WeaponChronicle> STORED_CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.optionalFieldOf("bearer", "").forGetter(WeaponChronicle::bearer),
             Codec.STRING.optionalFieldOf("title", "").forGetter(WeaponChronicle::title),
             Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("foes", Map.of())
                     .forGetter(WeaponChronicle::foeTally),
             RAW_ENTRY_CODEC.listOf().optionalFieldOf("entries", List.of())
-                    .forGetter(chronicle -> chronicle.entries().stream().map(RawEntry::of).toList())
+                    .forGetter(chronicle -> chronicle.entries().stream().map(RawEntry::of).toList()),
+            RECORDS_CODEC.optionalFieldOf("records", ChronicleRecords.EMPTY).forGetter(WeaponChronicle::records)
     ).apply(instance, WeaponChronicleCodecs::sanitize));
 
     public static final Codec<WeaponChronicle> CODEC = STORED_CODEC;
@@ -40,7 +48,7 @@ public final class WeaponChronicleCodecs {
     }
 
     private static WeaponChronicle sanitize(String bearer, String title, Map<String, Integer> foes,
-                                            List<RawEntry> rawEntries) {
+                                            List<RawEntry> rawEntries, ChronicleRecords records) {
         String safeBearer = bearer.length() > WeaponChronicle.MAX_BEARER_LENGTH
                 ? bearer.substring(0, WeaponChronicle.MAX_BEARER_LENGTH) : bearer;
         String safeTitle = WeaponChronicle.sanitizeTitle(title);
@@ -55,7 +63,7 @@ public final class WeaponChronicleCodecs {
                 .flatMap(Optional::stream)
                 .limit(WeaponChronicle.MAX_ENTRIES)
                 .toList();
-        return new WeaponChronicle(safeBearer, safeTitle, safeFoes, safeEntries);
+        return new WeaponChronicle(safeBearer, safeTitle, safeFoes, safeEntries, records);
     }
 
     private record RawEntry(String kind, String subject, int detail, long day) {

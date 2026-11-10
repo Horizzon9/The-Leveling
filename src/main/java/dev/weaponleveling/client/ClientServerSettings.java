@@ -23,7 +23,9 @@ public final class ClientServerSettings {
         if (level >= settings.maxLevel()) {
             return 0;
         }
-        return new XpCurve(settings.maxLevel(), settings.baseXp(), settings.growthFactor(), settings.xpTable())
-                .requiredXp(level);
+        double growth = settings.scaleCurveWithMaxLevel()
+                ? XpCurve.scaledGrowthFactor(settings.growthFactor(), settings.maxLevel())
+                : settings.growthFactor();
+        return new XpCurve(settings.maxLevel(), settings.baseXp(), growth, settings.xpTable()).requiredXp(level);
     }
 }

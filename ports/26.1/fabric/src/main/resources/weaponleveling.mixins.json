@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "package": "dev.weaponleveling.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "minVersion": "0.8",
+  "mixins": [
+    "ItemStackMixin",
+    "ItemStackAttributeMixin",
+    "LivingEntityDamageMixin",
+    "PlayerDamageMixin",
+    "LivingEntityUseItemMixin",
+    "AnvilMenuMixin",
+    "PlayerSoulboundMixin",
+    "PlayerShieldMixin",
+    "LivingEntityCombatMixin",
+    "MendingSupportMixin",
+    "MendingCommandMixin"
+  ],
+  "client": [
+    "AbstractContainerScreenAccessor",
+    "GuiGraphicsTooltipMixin",
+    "AbstractContainerScreenTooltipMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

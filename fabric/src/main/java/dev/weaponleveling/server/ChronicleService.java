@@ -1,6 +1,7 @@
 package dev.weaponleveling.server;
 
 import dev.weaponleveling.config.ServerConfig;
+import dev.weaponleveling.core.chronicle.ChronicleRecords;
 import dev.weaponleveling.core.chronicle.FoeMastery;
 import dev.weaponleveling.core.chronicle.RomanNumerals;
 import dev.weaponleveling.core.chronicle.WeaponChronicle;
@@ -68,14 +69,37 @@ public final class ChronicleService {
         WeaponChronicle.KillOutcome outcome = read(weapon)
                 .withBearer(attacker.getGameProfile().getName())
                 .recordKill(foeId(target), day, mastery);
-        WeaponChronicle updated = outcome.chronicle().recordIdentity(earnedIdentity, day);
+        persist(weapon, rangedAttack, directEntity, attacker, outcome.chronicle().recordIdentity(earnedIdentity, day));
+        return outcome.reachedTier();
+    }
+
+    /**
+     * Updates the weapon's personal bests with one hit. Writes nothing unless a record improved,
+     * so ordinary hits cost no item update.
+     */
+    public static void recordFeats(ItemStack weapon, RangedWeaponTracker.RangedAttack rangedAttack,
+                                   Entity directEntity, ServerPlayer attacker, LivingEntity target,
+                                   double hitDamage, int streak) {
+        if (!ServerConfig.CHRONICLE_ENABLED.get()) {
+            return;
+        }
+        WeaponChronicle chronicle = read(weapon);
+        double shotDistance = rangedAttack == null ? 0 : attacker.distanceTo(target);
+        ChronicleRecords improved = chronicle.records().withFeat(hitDamage, shotDistance, streak);
+        if (improved != chronicle.records()) {
+            persist(weapon, rangedAttack, directEntity, attacker,
+                    chronicle.withBearer(attacker.getGameProfile().getName()).withRecords(improved));
+        }
+    }
+
+    private static void persist(ItemStack weapon, RangedWeaponTracker.RangedAttack rangedAttack,
+                                Entity directEntity, ServerPlayer attacker, WeaponChronicle chronicle) {
         if (rangedAttack == null) {
-            weapon.set(WeaponComponents.CHRONICLE.get(), updated);
+            weapon.set(WeaponComponents.CHRONICLE.get(), chronicle);
         } else {
             RangedWeaponTracker.forEachMatchingStack(rangedAttack, directEntity, attacker,
-                    stack -> stack.set(WeaponComponents.CHRONICLE.get(), updated));
+                    stack -> stack.set(WeaponComponents.CHRONICLE.get(), chronicle));
         }
-        return outcome.reachedTier();
     }
 
     /**
@@ -155,7 +179,8 @@ public final class ChronicleService {
 
     /** The creature responsible for the damage, including a shooter behind a projectile; never a player. */
     private static LivingEntity creatureAttacker(DamageSource source) {
-        return source.getEntity() instanceof LivingEntity attacker && !(attacker instanceof Player) ? attacker : null;
+        return source != null && source.getEntity() instanceof LivingEntity attacker && !(attacker instanceof Player)
+                ? attacker : null;
     }
 
     private static void announce(ServerPlayer player, Component message) {

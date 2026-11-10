@@ -1,0 +1,23 @@
+{
+  "parent": "weaponleveling:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:zombie_head"
+    },
+    "title": {
+      "translate": "advancements.weaponleveling.foe_mastery.title"
+    },
+    "description": {
+      "translate": "advancements.weaponleveling.foe_mastery.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

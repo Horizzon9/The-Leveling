@@ -9,6 +9,7 @@ import dev.weaponleveling.integration.WeaponComponents;
 import dev.weaponleveling.loot.ModLootModifiers;
 import dev.weaponleveling.network.NetworkHandler;
 import dev.weaponleveling.server.ArmorAttributeEvents;
+import dev.weaponleveling.server.ToolEvents;
 import dev.weaponleveling.server.ArmorProgressEvents;
 import dev.weaponleveling.server.BrokenWeaponEvents;
 import dev.weaponleveling.server.CombatEvents;
@@ -44,6 +45,7 @@ public final class WeaponLevelingFabric implements ModInitializer {
         CombatEvents.register();
         ArmorProgressEvents.register();
         ArmorAttributeEvents.register();
+        ToolEvents.register();
         BrokenWeaponEvents.register();
         RangedWeaponTracker.register();
         LegacyIdentityEvents.register();

@@ -67,6 +67,35 @@ class FoeMasteryAndStreakTest {
     }
 
     @Test
+    void shieldSavesDurabilityLinearlyAndNeverBelowOne() {
+        assertEquals(4, dev.weaponleveling.core.combat.ShieldDurability.reduce(4, 0, 500, 0.5));
+        assertEquals(3, dev.weaponleveling.core.combat.ShieldDurability.reduce(4, 250, 500, 0.5));
+        assertEquals(2, dev.weaponleveling.core.combat.ShieldDurability.reduce(4, 500, 500, 0.5));
+        assertEquals(2, dev.weaponleveling.core.combat.ShieldDurability.reduce(4, 9000, 500, 0.5));
+        assertEquals(1, dev.weaponleveling.core.combat.ShieldDurability.reduce(1, 500, 500, 0.9));
+        assertEquals(0, dev.weaponleveling.core.combat.ShieldDurability.reduce(0, 500, 500, 0.5));
+        assertEquals(7, dev.weaponleveling.core.combat.ShieldDurability.reduce(7, 500, 500, 0));
+    }
+
+    @Test
+    void toolMiningBonusGrowsToTheCap() {
+        assertEquals(0, dev.weaponleveling.core.combat.ToolMiningBonus.efficiency(0, 500, 10), 1e-9);
+        assertEquals(5, dev.weaponleveling.core.combat.ToolMiningBonus.efficiency(250, 500, 10), 1e-9);
+        assertEquals(10, dev.weaponleveling.core.combat.ToolMiningBonus.efficiency(500, 500, 10), 1e-9);
+        assertEquals(10, dev.weaponleveling.core.combat.ToolMiningBonus.efficiency(900, 500, 10), 1e-9);
+        assertEquals(0, dev.weaponleveling.core.combat.ToolMiningBonus.efficiency(500, 500, 0), 1e-9);
+    }
+
+    @Test
+    void toolXpPaysFractionsByChance() {
+        assertEquals(0, dev.weaponleveling.core.combat.ToolXp.award(1.5, 0.1, 50, 0.20));
+        assertEquals(1, dev.weaponleveling.core.combat.ToolXp.award(1.5, 0.1, 50, 0.10));
+        assertEquals(5, dev.weaponleveling.core.combat.ToolXp.award(50, 0.1, 50, 0.99));
+        assertEquals(3, dev.weaponleveling.core.combat.ToolXp.award(50, 1.0, 3, 0.0));
+        assertEquals(0, dev.weaponleveling.core.combat.ToolXp.award(0, 0.1, 50, 0.0));
+    }
+
+    @Test
     void romanNumeralsMatchEnchantmentStyle() {
         assertEquals("I", RomanNumerals.of(1));
         assertEquals("IV", RomanNumerals.of(4));

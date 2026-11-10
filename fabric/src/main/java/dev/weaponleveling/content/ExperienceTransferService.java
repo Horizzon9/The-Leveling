@@ -3,7 +3,9 @@ package dev.weaponleveling.content;
 import dev.weaponleveling.config.ServerConfig;
 import dev.weaponleveling.core.model.WeaponProgress;
 import dev.weaponleveling.core.xp.ProgressionEngine;
+import dev.weaponleveling.core.xp.XpCurve;
 import dev.weaponleveling.integration.ArmorEligibility;
+import dev.weaponleveling.integration.ToolEligibility;
 import dev.weaponleveling.integration.BrokenWeaponHandler;
 import dev.weaponleveling.integration.LevelableItemEligibility;
 import dev.weaponleveling.integration.WeaponComponents;
@@ -28,26 +30,45 @@ public final class ExperienceTransferService {
         }
 
         WeaponProgress sourceProgress = source.get(WeaponComponents.PROGRESS.get());
-        if (sourceProgress == null || retainedXp(sourceProgress.totalXp()) == 0) {
+        XpCurve curve = ServerConfig.xpCurve();
+        boolean sourceAtCap = sourceProgress != null && sourceProgress.level() >= curve.maxLevel();
+        long sourceXp = sourceProgress == null ? 0 : effectiveTotalXp(sourceProgress, curve);
+        if (sourceProgress == null || retainedXp(sourceXp, sourceAtCap) == 0) {
             return new TransferResult.Failure(FailureReason.NO_TRANSFERABLE_XP);
         }
         WeaponProgress targetProgress = target.get(WeaponComponents.PROGRESS.get());
 
-        long transferredXp = retainedXp(sourceProgress.totalXp());
+        long transferredXp = retainedXp(sourceXp, sourceAtCap);
         long targetXp = targetProgress == null ? 0 : targetProgress.totalXp();
         long resultingXp = combinedXp(targetXp, transferredXp);
         WeaponProgress baseProgress = targetProgress == null
                 ? WeaponProgress.create(WeaponDamage.baseAttackDamage(target))
                 : targetProgress;
         WeaponProgress rebuilt = ProgressionEngine.setTotalXp(baseProgress, resultingXp,
-                ServerConfig.xpCurve(), ServerConfig.legacyPolicy());
+                curve, ServerConfig.legacyPolicy());
         ItemStack output = target.copyWithCount(1);
         output.set(WeaponComponents.PROGRESS.get(), rebuilt);
         return new TransferResult.Success(output, transferredXp, rebuilt.level());
     }
 
-    static long retainedXp(long totalXp) {
-        return Math.max(0, totalXp) / 2;
+    /**
+     * The XP an item really holds. Items whose level was set by commands, data packs or older
+     * versions can carry a total below what their level implies; the level is trusted in that case.
+     */
+    static long effectiveTotalXp(WeaponProgress progress, XpCurve curve) {
+        long fromLevel = curve.totalXpForLevel(Math.min(progress.level(), curve.maxLevel()));
+        long withCurrent = fromLevel > Long.MAX_VALUE - progress.currentXp() ? Long.MAX_VALUE
+                : fromLevel + progress.currentXp();
+        return Math.max(progress.totalXp(), withCurrent);
+    }
+
+    /**
+     * XP that moves to the target. Half of it normally; an item that has reached the server's level
+     * cap has nothing left to grow into, so it passes on everything without loss.
+     */
+    static long retainedXp(long totalXp, boolean sourceAtLevelCap) {
+        long safeTotal = Math.max(0, totalXp);
+        return sourceAtLevelCap ? safeTotal : safeTotal / 2;
     }
 
     static long combinedXp(long targetXp, long transferredXp) {
@@ -66,7 +87,10 @@ public final class ExperienceTransferService {
             return false;
         }
         if (!sourceArmor) {
-            return true;
+            return ToolEligibility.isEligible(source) == ToolEligibility.isEligible(target);
+        }
+        if (ArmorEligibility.isShield(source) || ArmorEligibility.isShield(target)) {
+            return ArmorEligibility.isShield(source) && ArmorEligibility.isShield(target);
         }
         if (!(source.getItem() instanceof ArmorItem sourceArmorItem)
                 || !(target.getItem() instanceof ArmorItem targetArmorItem)) {

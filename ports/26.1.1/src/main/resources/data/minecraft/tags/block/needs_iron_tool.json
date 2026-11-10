@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "weaponleveling:end_amber_ore",
+    "weaponleveling:nether_amber_ore"
+  ]
+}

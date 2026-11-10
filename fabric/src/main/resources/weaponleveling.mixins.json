@@ -8,14 +8,18 @@
     "ItemStackAttributeMixin",
     "LivingEntityDamageMixin",
     "LivingEntityUseItemMixin",
-    "AnvilMenuMixin"
+    "AnvilMenuMixin",
+    "PlayerSoulboundMixin",
+    "PlayerShieldMixin",
+    "LivingEntityCombatMixin",
+    "MendingSupportMixin",
+    "MendingCommandMixin"
   ],
   "client": [
     "AbstractContainerScreenAccessor",
     "GuiGraphicsTooltipMixin",
     "GuiGraphicsItemDecorationMixin",
-    "AbstractContainerScreenTooltipMixin",
-    "ItemStackFoilMixin"
+    "AbstractContainerScreenTooltipMixin"
   ],
   "injectors": {
     "defaultRequire": 1

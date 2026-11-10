@@ -159,6 +159,9 @@ public final class WeaponSettingsScreen extends Screen {
         addClientToggle(left, y, "screen.weaponleveling.settings.kill_xp_overlay",
                 ClientConfig.KILL_XP_OVERLAY_ENABLED.get(), ClientConfig.KILL_XP_OVERLAY_ENABLED::set);
         y += 28;
+        addClientToggle(left, y, "screen.weaponleveling.settings.low_durability_warning",
+                ClientConfig.SHOW_LOW_DURABILITY_WARNING.get(), ClientConfig.SHOW_LOW_DURABILITY_WARNING::set);
+        y += 28;
         addClientToggle(left, y, "screen.weaponleveling.settings.chat_share",
                 ClientConfig.CHAT_SHARE_ENABLED.get(), ClientConfig.CHAT_SHARE_ENABLED::set);
         y += 28;
@@ -170,8 +173,14 @@ public final class WeaponSettingsScreen extends Screen {
     private int addIdentityPage(int left, int y) {
         y = addField(left, y, "screen.weaponleveling.settings.relic_level_percent", "relic_level_percent",
                 Integer.toString(settings.relicLevelPercent()));
-        return addField(left, y, "screen.weaponleveling.settings.legacy_level_percent", "legacy_level_percent",
+        y = addField(left, y, "screen.weaponleveling.settings.legacy_level_percent", "legacy_level_percent",
                 Integer.toString(settings.legacyLevelPercent()));
+        addToggle(left, y, "screen.weaponleveling.settings.preserve_broken", settings.preserveBrokenItems(),
+                "preserve_broken_items");
+        y += 28;
+        addToggle(left, y, "screen.weaponleveling.settings.auto_replace_broken", settings.autoReplaceBroken(),
+                "auto_replace_broken");
+        return y + 20;
     }
 
     private int addField(int left, int y, String labelKey, String key, String value) {
@@ -261,8 +270,10 @@ public final class WeaponSettingsScreen extends Screen {
 
         graphics.drawCenteredString(font, title, width / 2, 12, 0xFFFFFFFF);
         if (!settings.canConfigure() && (page < 2 || page == 5)) {
-            graphics.drawCenteredString(font, Component.translatable("screen.weaponleveling.settings.read_only"),
-                    width / 2, panelBottom + 6, 0xFFFFAA00);
+            String reasonKey = minecraft != null && minecraft.level == null
+                    ? "screen.weaponleveling.settings.no_world" : "screen.weaponleveling.settings.read_only";
+            graphics.drawWordWrap(font, Component.translatable(reasonKey),
+                    panelLeft, panelBottom + 6, panelWidth, 0xFFFFAA00);
         }
         if (settings.usesExactXpTable() && page == 0) {
             graphics.drawString(font, Component.translatable("screen.weaponleveling.settings.xp_table_note"),

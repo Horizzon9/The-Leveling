@@ -15,18 +15,29 @@ class ExperienceTransferServiceTest {
 
     @Test
     void retainsExactlyHalfOfEvenTotalXp() {
-        assertEquals(5_000_000L, ExperienceTransferService.retainedXp(10_000_000L));
+        assertEquals(5_000_000L, ExperienceTransferService.retainedXp(10_000_000L, false));
     }
 
     @Test
     void floorsOddXpInsteadOfCreatingXp() {
-        assertEquals(50L, ExperienceTransferService.retainedXp(101L));
+        assertEquals(50L, ExperienceTransferService.retainedXp(101L, false));
+        assertEquals(101L, ExperienceTransferService.retainedXp(101L, true));
+    }
+
+    @Test
+    void levelIsTrustedWhenStoredTotalIsTooLow() {
+        WeaponProgress inconsistent = new WeaponProgress(WeaponProgress.CURRENT_SCHEMA_VERSION,
+                java.util.UUID.randomUUID(), 3, 5, 0, 0, java.util.Map.of(), 0, 0,
+                dev.weaponleveling.core.model.LegacyTier.NONE, 7);
+
+        assertEquals(DEFAULT_CURVE.totalXpForLevel(3) + 5,
+                ExperienceTransferService.effectiveTotalXp(inconsistent, DEFAULT_CURVE));
     }
 
     @Test
     void recomputesLevelFromRetainedTotalXp() {
         long sourceXp = DEFAULT_CURVE.totalXpForLevel(50) + 1_000_000L;
-        long retainedXp = ExperienceTransferService.retainedXp(sourceXp);
+        long retainedXp = ExperienceTransferService.retainedXp(sourceXp, false);
 
         WeaponProgress transferred = ProgressionEngine.setTotalXp(
                 WeaponProgress.create(7.0), retainedXp, DEFAULT_CURVE);

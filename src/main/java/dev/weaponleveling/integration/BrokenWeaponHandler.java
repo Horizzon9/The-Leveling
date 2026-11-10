@@ -1,5 +1,7 @@
 package dev.weaponleveling.integration;
 
+import dev.weaponleveling.config.ServerConfig;
+import dev.weaponleveling.server.BrokenItemReplacement;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -26,7 +28,8 @@ public final class BrokenWeaponHandler {
 
     /** @return true when vanilla destruction must be suppressed for this stack. */
     public static boolean preserveOnBreak(ItemStack stack, LivingEntity owner) {
-        if (!LevelableItemEligibility.isEligible(stack) || !stack.isDamageableItem()) {
+        if (!ServerConfig.PRESERVE_BROKEN_ITEMS.get() || !LevelableItemEligibility.isEligible(stack)
+                || !stack.isDamageableItem()) {
             return false;
         }
         // Mob armor is not part of the player-owned progression system and must keep vanilla break behavior.
@@ -35,7 +38,11 @@ public final class BrokenWeaponHandler {
         }
         stack.set(WeaponComponents.BROKEN.get(), true);
         stack.setDamageValue(stack.getMaxDamage());
+        EquipmentSlot slot = owner instanceof ServerPlayer player ? slotHolding(player, stack) : null;
         moveBrokenArmorToInventory(stack, owner);
+        if (slot != null) {
+            BrokenItemReplacement.replaceIfEnabled((ServerPlayer) owner, stack, slot);
+        }
         return true;
     }
 
@@ -49,6 +56,16 @@ public final class BrokenWeaponHandler {
         repaired.remove(WeaponComponents.BROKEN.get());
         repaired.setDamageValue(Math.max(0, repaired.getMaxDamage() - 1));
         return repaired;
+    }
+
+    private static EquipmentSlot slotHolding(ServerPlayer player, ItemStack stack) {
+        for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND,
+                EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+            if (player.getItemBySlot(slot) == stack) {
+                return slot;
+            }
+        }
+        return null;
     }
 
     private static void moveBrokenArmorToInventory(ItemStack stack, LivingEntity owner) {

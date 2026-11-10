@@ -17,9 +17,15 @@ public final class ServerConfig {
     public static final ModConfigSpec.LongValue BASE_XP = BUILDER
             .comment("Default requirement to move from level 0 to 1. The 500-level curve starts at 100 XP.")
             .defineInRange("progression.baseXp", 100L, 1L, Long.MAX_VALUE);
+    public static final ModConfigSpec.DoubleValue XP_REQUIREMENT_MULTIPLIER = BUILDER
+            .comment("Scales the XP every level needs, for the formula and the exact table alike. 0.5 halves the cost of every level, 2 doubles it.")
+            .defineInRange("progression.xpRequirementMultiplier", 0.5, 0.01, 100.0);
     public static final ModConfigSpec.DoubleValue GROWTH_FACTOR = BUILDER
             .comment("Default exponential XP growth. 1.02432611896515 raises each next level by about 2.433%; level 0 to 500 needs about 680.8 million total XP.")
             .defineInRange("progression.growthFactor", 1.02432611896515, 1.0, 100.0);
+    public static final ModConfigSpec.BooleanValue SCALE_CURVE_WITH_MAX_LEVEL = BUILDER
+            .comment("Stretches the XP curve to the configured maxLevel so higher caps stay reachable: each level costs baseXp * growthFactor^(level * 500 / maxLevel). At maxLevel 500 nothing changes; at 1000 the last level costs the same as at 500 and total XP roughly doubles instead of growing exponentially. Set false to apply growthFactor per level regardless of maxLevel. Ignored while xpTable is used.")
+            .define("progression.scaleCurveWithMaxLevel", true);
     public static final ModConfigSpec.ConfigValue<List<? extends Long>> XP_TABLE = BUILDER
             .comment("Optional exact per-level requirements. Entry 1 is the XP required to move from level 0 to 1. Empty uses the formula.")
             .defineListAllowEmpty("progression.xpTable", List.of(), () -> 1L,
@@ -59,6 +65,30 @@ public final class ServerConfig {
             .comment("Caps actual damage tracking at the target's pre-hit health.")
             .define("xp.enableAntiAbuse", true);
 
+    public static final ModConfigSpec.BooleanValue TOOL_LEVELING_ENABLED = BUILDER
+            .comment("Lets pickaxes, shovels and hoes gain XP by breaking blocks they are the right tool for, and mine faster as they level. Axes stay weapons and level by fighting.")
+            .define("tools.levelingEnabled", true);
+    public static final ModConfigSpec.DoubleValue TOOL_XP_PER_HARDNESS = BUILDER
+            .comment("Tool XP per point of block hardness (stone 1.5, ores 3, obsidian 50). Mining is much faster than fighting, so the default is low: stone averages 0.15 XP, about 33 stone per zombie kill. Fractions are paid out by chance. Blocks that break instantly give nothing.")
+            .defineInRange("tools.xpPerHardness", 0.1, 0.0, 1000.0);
+    public static final ModConfigSpec.LongValue TOOL_MAX_XP_PER_BLOCK = BUILDER
+            .comment("Maximum tool XP from one broken block.")
+            .defineInRange("tools.maxXpPerBlock", 50L, 0L, 1_000_000L);
+    public static final ModConfigSpec.DoubleValue TOOL_MAX_MINING_BONUS = BUILDER
+            .comment("Mining efficiency a tool at the level cap adds in the main hand, growing linearly with level. Uses the vanilla mining_efficiency attribute: Efficiency I adds 2, III adds 10, V adds 26.")
+            .defineInRange("tools.maxMiningEfficiencyBonus", 10.0, 0.0, 100.0);
+    public static final ModConfigSpec.BooleanValue PRESERVE_BROKEN_ITEMS = BUILDER
+            .comment("When a levelable item reaches zero durability it becomes Broken (unusable, kept, repairable) instead of vanishing. Off restores vanilla: the item is destroyed and its level is lost.")
+            .define("broken.preserveItems", true);
+    public static final ModConfigSpec.BooleanValue AUTO_REPLACE_BROKEN = BUILDER
+            .comment("When a levelable item breaks, swap a matching unbroken item from the inventory into its place and say so in chat. Needs broken.preserveItems for the broken item to be kept.")
+            .define("broken.autoReplace", false);
+    public static final ModConfigSpec.BooleanValue SHIELD_LEVELING_ENABLED = BUILDER
+            .comment("Lets shields gain XP from the damage they block. A levelled shield also loses durability more slowly. Needs no armor settings to be on.")
+            .define("shield.levelingEnabled", true);
+    public static final ModConfigSpec.DoubleValue SHIELD_MAX_DURABILITY_SAVING = BUILDER
+            .comment("Share of the durability a block would cost that a shield at the level cap saves. Grows linearly with level; 0.5 means a max-level shield loses half as much durability per block.")
+            .defineInRange("shield.maxDurabilitySaving", 0.5, 0.0, 0.9);
     public static final ModConfigSpec.BooleanValue ARMOR_LEVELING_ENABLED = BUILDER
             .comment("Lets equipped player armor gain XP from damage remaining after armor, enchantment, and effect mitigation."
                     + " Absorption does not prevent armor XP.")
@@ -73,11 +103,12 @@ public final class ServerConfig {
             .comment("Applies an Armor attribute bonus for every level gained after level zero.")
             .define("armor.levelBonusEnabled", true);
     public static final ModConfigSpec.DoubleValue ARMOR_FLAT_BONUS_PER_LEVEL = BUILDER
-            .comment("Armor added by each equipped armor piece for every gained level. The level-zero baseline default is +0.004 and reaches the +2 cap at level 500.")
-            .defineInRange("armor.flatBonusPerLevel", 0.004, 0.0, 1_000_000.0);
+            .comment("Armor added per gained level. The default 0.02 gives +1 Armor for every 50 levels per piece (+10 at level 500)."
+                    + " Whatever this says, a piece always earns at least +1 Armor per 100 levels.")
+            .defineInRange("armor.flatBonusPerLevel", 0.02, 0.0, 1_000_000.0);
     public static final ModConfigSpec.DoubleValue ARMOR_MAX_LEVEL_BONUS = BUILDER
-            .comment("Maximum Armor bonus provided by one armor piece from its level.")
-            .defineInRange("armor.maxLevelBonus", 2.0, 0.0, 1_000_000.0);
+            .comment("Maximum Armor bonus per piece from levels. Never cuts below the guaranteed +1 Armor per 100 levels.")
+            .defineInRange("armor.maxLevelBonus", 20.0, 0.0, 1_000_000.0);
 
     public static final ModConfigSpec.BooleanValue LEVEL_DAMAGE_BONUS_ENABLED = BUILDER
             .comment("Applies the bounded level damage curve after level zero.")
@@ -109,7 +140,7 @@ public final class ServerConfig {
             .comment("Vanilla permission level required for /weaponlevel commands. 2 is the normal operator level.")
             .defineInRange("commands.permissionLevel", 2, 0, 4);
     public static final ModConfigSpec.BooleanValue ALLOW_IN_GAME_CONFIGURATION = BUILDER
-            .comment("Allows operators to change the supported server settings from the Weapon Leveling menu.")
+            .comment("Allows operators to change the supported server settings from The Leveling menu.")
             .define("commands.allowInGameConfiguration", true);
     public static final ModConfigSpec.BooleanValue ALLOW_LEVEL_COMMANDS = BUILDER
             .comment("Allows exact level changes and relative level changes through /weaponlevel.")
@@ -165,6 +196,13 @@ public final class ServerConfig {
             .comment("Damage reduction per mastery tier of each worn piece against the mastered type. 0.01 means a full set at tier III takes 12% less damage from it. The total never exceeds 50%.")
             .defineInRange("chronicle.armorMastery.damageReductionPerTier", 0.01, 0.0, 0.125);
 
+    public static final ModConfigSpec.ConfigValue<String> SOULBOUND_TIER = BUILDER
+            .comment("Identity from which items are soulbound and stay with their owner through death: legacy, relic or off. Has no effect while keepInventory is on.")
+            .define("soulbound.tier", "legacy", ServerConfig::isSoulboundTier);
+    public static final ModConfigSpec.BooleanValue LEGACY_KILL_EFFECT = BUILDER
+            .comment("Shows an amber particle burst and a chime where a creature falls to a Legacy weapon.")
+            .define("effects.legacyKillEffect", true);
+
     public static final ModConfigSpec.BooleanValue KILL_STREAK_ENABLED = BUILDER
             .comment("Rapid consecutive kills with the same weapon build a streak that raises the kill XP of each following kill.")
             .define("streak.enabled", true);
@@ -184,8 +222,20 @@ public final class ServerConfig {
     }
 
     public static XpCurve xpCurve() {
-        return new XpCurve(MAX_LEVEL.get(), BASE_XP.get(), GROWTH_FACTOR.get(),
-                XP_TABLE.get().stream().map(Number::longValue).toList());
+        double growth = SCALE_CURVE_WITH_MAX_LEVEL.get()
+                ? XpCurve.scaledGrowthFactor(GROWTH_FACTOR.get(), MAX_LEVEL.get())
+                : GROWTH_FACTOR.get();
+        return new XpCurve(MAX_LEVEL.get(), effectiveBaseXp(), growth, effectiveXpTable());
+    }
+
+    /** Base XP after {@link #XP_REQUIREMENT_MULTIPLIER}; the client curve is built from the same numbers. */
+    public static long effectiveBaseXp() {
+        return XpCurve.scaleRequirement(BASE_XP.get(), XP_REQUIREMENT_MULTIPLIER.get());
+    }
+
+    public static java.util.List<Long> effectiveXpTable() {
+        double multiplier = XP_REQUIREMENT_MULTIPLIER.get();
+        return XP_TABLE.get().stream().map(value -> XpCurve.scaleRequirement(value.longValue(), multiplier)).toList();
     }
 
     public static LegacyPolicy legacyPolicy() {
@@ -213,6 +263,11 @@ public final class ServerConfig {
         }
         return new KillStreak.Rules(KILL_STREAK_WINDOW_SECONDS.get() * 20L, KILL_STREAK_BONUS_PER_KILL.get(),
                 KILL_STREAK_MAX_BONUS.get());
+    }
+
+    private static boolean isSoulboundTier(Object value) {
+        return value instanceof String string && (string.equals("legacy") || string.equals("relic")
+                || string.equals("off"));
     }
 
     private static boolean isNotificationMode(Object value) {

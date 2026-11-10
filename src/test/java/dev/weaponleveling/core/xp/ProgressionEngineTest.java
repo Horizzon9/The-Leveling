@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ProgressionEngineTest {
@@ -123,5 +124,31 @@ public class ProgressionEngineTest {
 
         assertEquals(0, reset.level());
         assertEquals(LegacyTier.NONE, reset.legacyTier());
+    }
+
+    @Test
+    void scaledCurveKeepsTheLastLevelCostForAnyCap() {
+        double growth = 1.02432611896515;
+        var reference = new XpCurve(500, 100, XpCurve.scaledGrowthFactor(growth, 500), List.of());
+        var doubled = new XpCurve(1000, 100, XpCurve.scaledGrowthFactor(growth, 1000), List.of());
+
+        assertEquals(growth, XpCurve.scaledGrowthFactor(growth, 500), 1e-12);
+        assertEquals(reference.requiredXp(499), doubled.requiredXp(999), reference.requiredXp(499) * 0.06);
+        assertEquals((double) reference.requiredXp(250), doubled.requiredXp(500), 1.0);
+        long referenceTotal = reference.totalXpForLevel(500);
+        long doubledTotal = doubled.totalXpForLevel(1000);
+        assertTrue(doubledTotal > referenceTotal * 19 / 10 && doubledTotal < referenceTotal * 21 / 10);
+        assertEquals(1.0, XpCurve.scaledGrowthFactor(1.0, 1000), 0);
+    }
+
+    @Test
+    void requirementMultiplierScalesEveryLevelAndNeverDropsBelowOne() {
+        assertEquals(50, XpCurve.scaleRequirement(100, 0.5));
+        assertEquals(200, XpCurve.scaleRequirement(100, 2.0));
+        assertEquals(1, XpCurve.scaleRequirement(1, 0.01));
+        assertEquals(Long.MAX_VALUE, XpCurve.scaleRequirement(Long.MAX_VALUE, 100));
+        var full = new XpCurve(500, 100, 1.02432611896515, List.of());
+        var half = new XpCurve(500, XpCurve.scaleRequirement(100, 0.5), 1.02432611896515, List.of());
+        assertEquals(full.requiredXp(250) / 2.0, half.requiredXp(250), 1.0);
     }
 }

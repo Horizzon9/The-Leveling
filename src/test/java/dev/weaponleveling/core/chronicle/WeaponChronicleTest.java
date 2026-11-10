@@ -133,7 +133,8 @@ class WeaponChronicleTest {
     @Test
     void rejectsValuesOutsideStorageBounds() {
         assertThrows(IllegalArgumentException.class,
-                () -> new WeaponChronicle("", "", java.util.Map.of("minecraft:zombie", 0), List.of()));
+                () -> new WeaponChronicle("", "", java.util.Map.of("minecraft:zombie", 0), List.of(),
+                        ChronicleRecords.EMPTY));
     }
 
     @Test
@@ -158,6 +159,19 @@ class WeaponChronicleTest {
         assertEquals(2, second.chronicle().killsOf("minecraft:zombie"));
         assertEquals(1, second.reachedTier());
         assertTrue(second.chronicle().first(ChronicleEntry.Kind.FIRST_KILL).isEmpty());
+    }
+
+    @Test
+    void recordsOnlyEverImprove() {
+        ChronicleRecords records = ChronicleRecords.EMPTY.withFeat(12.5, 0, 1).withFeat(8, 40, 3);
+
+        assertEquals(12.5, records.strongestHit());
+        assertEquals(40, records.longestShot());
+        assertEquals(3, records.longestStreak());
+        assertSame(records, records.withFeat(1, 1, 1));
+        assertEquals(0, ChronicleRecords.EMPTY.withFeat(Double.NaN, -5, -1).strongestHit());
+        assertSame(WeaponChronicle.EMPTY, WeaponChronicle.EMPTY.withRecords(ChronicleRecords.EMPTY));
+        assertFalse(WeaponChronicle.EMPTY.withRecords(records).isEmpty());
     }
 
     private static WeaponChronicle killTimes(WeaponChronicle chronicle, String foe, int times) {

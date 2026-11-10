@@ -1,0 +1,23 @@
+{
+  "parent": "weaponleveling:relic",
+  "display": {
+    "icon": {
+      "id": "minecraft:nether_star"
+    },
+    "title": {
+      "translate": "advancements.weaponleveling.legacy.title"
+    },
+    "description": {
+      "translate": "advancements.weaponleveling.legacy.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

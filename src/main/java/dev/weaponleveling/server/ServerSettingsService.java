@@ -58,18 +58,23 @@ public final class ServerSettingsService {
         String value = change.value().trim();
         return switch (key) {
             case "max_level" -> {
-                int parsed = parseInt(value, ServerConfig.MAX_LEVEL.get(), 10_000);
+                // Lowering is allowed: items above the new cap keep their stored level, and every
+                // level-scaled bonus is capped at maxLevel, so raising the cap again restores them.
+                int parsed = parseInt(value, 1, 10_000);
                 yield new ValidatedChange(() -> ServerConfig.MAX_LEVEL.set(parsed));
             }
             case "base_xp" -> {
                 long parsed = parseLong(value, 1, 1_000_000_000_000L);
-                yield new ValidatedChange(() -> ServerConfig.BASE_XP.set(parsed));
+                long raw = Math.max(1, Math.round(parsed / ServerConfig.XP_REQUIREMENT_MULTIPLIER.get()));
+                yield new ValidatedChange(() -> ServerConfig.BASE_XP.set(raw));
             }
             case "growth_factor" -> {
                 double parsed = parseDouble(value, 1, 100);
                 yield new ValidatedChange(() -> ServerConfig.GROWTH_FACTOR.set(parsed));
             }
             case "allow_creative_progress" -> booleanChange(value, ServerConfig.ALLOW_CREATIVE_PROGRESS::set);
+            case "preserve_broken_items" -> booleanChange(value, ServerConfig.PRESERVE_BROKEN_ITEMS::set);
+            case "auto_replace_broken" -> booleanChange(value, ServerConfig.AUTO_REPLACE_BROKEN::set);
             case "relic_level_percent" -> {
                 int parsed = parseInt(value, 1, 100);
                 yield new ValidatedChange(() -> ServerConfig.RELIC_LEVEL_PERCENT.set(parsed));

@@ -9,6 +9,7 @@ import dev.weaponleveling.core.model.WeaponProgress;
 import dev.weaponleveling.core.model.LegacyTier;
 import dev.weaponleveling.core.model.LegacyPersona;
 import dev.weaponleveling.integration.ArmorEligibility;
+import dev.weaponleveling.integration.ToolEligibility;
 import dev.weaponleveling.integration.ArmorProtection;
 import dev.weaponleveling.integration.WeaponComponents;
 import dev.weaponleveling.integration.BrokenWeaponHandler;
@@ -51,12 +52,15 @@ public final class ClientEvents {
     private ClientEvents() {
     }
 
-    @SubscribeEvent
+    // LOWEST so tooltip-rewriting mods (Apotheosis, AttributesLib) have finished before we add the level panel
+    // and rewrite the damage/armor lines, instead of wiping or reformatting them afterwards.
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void addTooltip(ItemTooltipEvent event) {
         var serverSettings = ClientServerSettings.current();
         boolean isWeapon = WeaponEligibility.isEligible(event.getItemStack(), serverSettings.autoDetectExternalWeapons());
         boolean isArmor = ArmorEligibility.isEligible(event.getItemStack());
-        if (!isWeapon && !isArmor) {
+        boolean isTool = ToolEligibility.isEligible(event.getItemStack());
+        if (!isWeapon && !isArmor && !isTool) {
             return;
         }
         WeaponProgress progress = event.getItemStack().get(WeaponComponents.PROGRESS.get());
@@ -138,11 +142,19 @@ public final class ClientEvents {
                     levelDetails.set(levelDetails.size() - 1, Component.literal(detailPrefix).append(Component.translatable(
                                     "tooltip.weaponleveling.damage_endured", formatTotalDamage(progress.totalDamageDealt())))
                             .withStyle(style -> style.withColor(ClientConfig.detailColor())));
+                } else if (isTool) {
+                    levelDetails.set(levelDetails.size() - 1, Component.literal(detailPrefix).append(Component.translatable(
+                                    "tooltip.weaponleveling.mined", formatTotalDamage(progress.totalDamageDealt())))
+                            .withStyle(style -> style.withColor(ClientConfig.detailColor())));
                 } else {
                     levelDetails.add(Component.literal(detailPrefix).append(Component.translatable(
                                     "tooltip.weaponleveling.defeated", progress.totalKills()))
                             .withStyle(style -> style.withColor(ClientConfig.detailColor())));
                 }
+                levelDetails.add(Component.literal(detailPrefix).append(Component.translatable(
+                                "tooltip.weaponleveling.total_xp",
+                                String.format(java.util.Locale.ROOT, "%,d", progress.totalXp())))
+                        .withStyle(style -> style.withColor(ClientConfig.detailColor())));
             }
             if (ClientConfig.SHOW_CHRONICLE.get()) {
                 ChronicleTooltip.append(levelDetails, event.getItemStack(), ClientConfig.CUSTOM_TOOLTIP_PANEL.get() ? "  " : "  ▸ ",
@@ -163,7 +175,7 @@ public final class ClientEvents {
         ItemNameStyle.decorate(event.getToolTip(), event.getItemStack(), level, serverSettings.maxLevel());
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void addVisualTooltipPanel(RenderTooltipEvent.GatherComponents event) {
         if (!ClientConfig.CUSTOM_TOOLTIP_PANEL.get()) {
             return;
@@ -229,6 +241,11 @@ public final class ClientEvents {
     public static void renderLevelUpSeal(RenderGuiEvent.Post event) {
         LevelUpSealOverlay.render(event);
         KillXpOverlay.render(event);
+    }
+
+    @SubscribeEvent
+    public static void tickIdentityAura(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
+        IdentityAura.tick(net.minecraft.client.Minecraft.getInstance());
     }
 
     @SubscribeEvent
@@ -303,7 +320,7 @@ public final class ClientEvents {
         if (baseArmor <= 0) {
             return;
         }
-        double bonus = ArmorLevelBonus.calculate(level, settings.armorFlatBonusPerLevel(),
+        double bonus = ArmorLevelBonus.calculate(Math.min(level, settings.maxLevel()), settings.armorFlatBonusPerLevel(),
                 settings.armorMaxLevelBonus()).armor();
         if (bonus <= 0) {
             return;
@@ -314,13 +331,16 @@ public final class ClientEvents {
     private static void replaceAttackDamageLine(ItemTooltipEvent event, String value) {
         String attackDamageName = Component.translatable(Attributes.ATTACK_DAMAGE.value().getDescriptionId()).getString();
         var tooltip = event.getToolTip();
-        for (int index = 0; index < tooltip.size(); index++) {
-            if (tooltip.get(index).getString().contains(attackDamageName)) {
-                tooltip.set(index, Component.literal(value + " ").append(Component.translatable(
-                        Attributes.ATTACK_DAMAGE.value().getDescriptionId())).withStyle(ChatFormatting.DARK_GREEN));
-                return;
-            }
+        int index = firstFlatAttributeLine(tooltip, attackDamageName);
+        if (index < 0) {
+            // A tooltip-rewriting mod may have removed or renamed the vanilla line; still show the real damage.
+            tooltip.add(Math.min(1, tooltip.size()), Component.literal(value + " ").append(Component.translatable(
+                    Attributes.ATTACK_DAMAGE.value().getDescriptionId())).withStyle(ChatFormatting.DARK_GREEN));
+            return;
         }
+        foldAttributeLines(tooltip, index, attackDamageName, Component.literal(value + " ").append(
+                Component.translatable(Attributes.ATTACK_DAMAGE.value().getDescriptionId()))
+                .withStyle(ChatFormatting.DARK_GREEN));
     }
 
     private static void addMainHandDamagePreview(List<Component> levelDetails, net.minecraft.world.item.ItemStack stack,
@@ -359,13 +379,59 @@ public final class ClientEvents {
     private static void replaceArmorLine(ItemTooltipEvent event, String value) {
         String armorName = Component.translatable(Attributes.ARMOR.value().getDescriptionId()).getString();
         var tooltip = event.getToolTip();
+        int index = firstFlatAttributeLine(tooltip, armorName);
+        if (index < 0) {
+            return;
+        }
+        foldAttributeLines(tooltip, index, armorName, Component.literal("+" + value + " ").append(
+                Component.translatable(Attributes.ARMOR.value().getDescriptionId()))
+                .withStyle(ChatFormatting.DARK_GREEN));
+    }
+
+    /**
+     * True for a tooltip line that shows a flat value of the given attribute, such as "3 Armor"
+     * or "+2 Armor". Advanced-tooltip debug blocks ("[..]") are ignored; percentage lines belong
+     * to multiplicative modifiers, which the folded total does not include.
+     */
+    private static boolean isFlatAttributeLine(Component line, String attributeName) {
+        String text = line.getString().strip();
+        if (text.endsWith("]") && text.contains("[")) {
+            text = text.substring(0, text.lastIndexOf('[')).strip();
+        }
+        return !text.contains("%") && text.endsWith(attributeName);
+    }
+
+    private static int firstFlatAttributeLine(List<Component> tooltip, String attributeName) {
         for (int index = 0; index < tooltip.size(); index++) {
-            if (tooltip.get(index).getString().endsWith(armorName)) {
-                tooltip.set(index, Component.literal("+" + value + " ").append(Component.translatable(
-                        Attributes.ARMOR.value().getDescriptionId())).withStyle(ChatFormatting.DARK_GREEN));
-                return;
+            if (isFlatAttributeLine(tooltip.get(index), attributeName)) {
+                return index;
             }
         }
+        return -1;
+    }
+
+    /**
+     * Writes the summed total over the vanilla attribute line and removes the neighbouring
+     * per-modifier lines the total already includes, so a levelled item shows one value:
+     * a +3 helmet with a +2 level bonus renders as a single "+5 Armor" line.
+     */
+    private static void foldAttributeLines(List<Component> tooltip, int index, String attributeName,
+                                           Component total) {
+        int start = index;
+        while (start > 0 && isFlatAttributeLine(tooltip.get(start - 1), attributeName)) {
+            start--;
+        }
+        int end = index;
+        while (end + 1 < tooltip.size() && isFlatAttributeLine(tooltip.get(end + 1), attributeName)) {
+            end++;
+        }
+        for (int removed = end; removed > index; removed--) {
+            tooltip.remove(removed);
+        }
+        for (int removed = index - 1; removed >= start; removed--) {
+            tooltip.remove(removed);
+        }
+        tooltip.set(start, total);
     }
 
     private static String format(double value) {

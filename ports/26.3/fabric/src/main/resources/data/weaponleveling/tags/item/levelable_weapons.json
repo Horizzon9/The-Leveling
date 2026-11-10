@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    "#weaponleveling:levelable_swords",
+    "#weaponleveling:levelable_axes",
+    "minecraft:mace",
+    "minecraft:trident",
+    {
+      "id": "#c:tools/melee_weapon",
+      "required": false
+    },
+    {
+      "id": "#weaponleveling:armorplus_melee_weapons",
+      "required": false
+    }
+  ]
+}

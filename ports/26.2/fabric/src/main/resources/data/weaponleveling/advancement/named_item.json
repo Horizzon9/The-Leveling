@@ -1,0 +1,23 @@
+{
+  "parent": "weaponleveling:relic",
+  "display": {
+    "icon": {
+      "id": "minecraft:name_tag"
+    },
+    "title": {
+      "translate": "advancements.weaponleveling.named_item.title"
+    },
+    "description": {
+      "translate": "advancements.weaponleveling.named_item.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "granted": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

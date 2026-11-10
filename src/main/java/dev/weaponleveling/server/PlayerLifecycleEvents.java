@@ -16,6 +16,14 @@ public final class PlayerLifecycleEvents {
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             NetworkHandler.sendServerSettings(player);
+            SoulboundService.restore(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            SoulboundService.restore(player);
         }
     }
 

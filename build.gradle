@@ -9,7 +9,7 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = "${mod_id}-neoforge-${minecraft_version}"
+    archivesName = "${mod_archive_name}-neoforge-${minecraft_version}"
 }
 
 java {
@@ -167,8 +167,10 @@ tasks.withType(ProcessResources).configureEach {
 // MDK deseni) - aksi halde bir modpack acildiginda farkli modlarin LICENSE dosyalari ayirt
 // edilemezdi.
 tasks.named('jar', Jar) {
+    // Read at configuration time: the configuration cache cannot resolve project properties later.
+    def licenseSuffix = project.mod_id
     from(file('LICENSE')) {
-        rename { "${it}_${mod_id}" }
+        rename { "${it}_${licenseSuffix}" }
     }
 }
 

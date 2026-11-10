@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import dev.weaponleveling.platform.event.DamageEvents;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -41,7 +42,11 @@ public final class ArmorProgressEvents {
                 || (player.isCreative() && !ServerConfig.ALLOW_CREATIVE_PROGRESS.get())) {
             return;
         }
-        long earnedXp = armorXpFor(mitigatedDamage);
+        // /kill and the void bypass invulnerability with absurd damage values; they must never train armor.
+        if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            return;
+        }
+        long earnedXp = armorXpFor(Math.min(mitigatedDamage, player.getMaxHealth()));
         if (earnedXp <= 0) {
             return;
         }

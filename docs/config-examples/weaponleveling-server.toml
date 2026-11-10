@@ -20,8 +20,8 @@ levelingEnabled = true
 xpPerDamage = 1.0
 maxXpPerDamageEvent = 10000
 levelBonusEnabled = true
-flatBonusPerLevel = 0.004 # Seviye 0 tabanında parça başına +2 Armor tavanına seviye 500'de ulaşır.
-maxLevelBonus = 2.0
+flatBonusPerLevel = 0.02 # Her 50 seviyede +1 Armor; 500. seviyede parça başına +10. Her 100 seviyede en az +1 Armor garantidir; zayıf değerler bu tabanı aşağı çekemez.
+maxLevelBonus = 20.0 # Parça başına seviye bonusu tavanı; garanti edilen +1 Armor / 100 seviye tabanını asla kesmez.
 
 [damage]
 levelBonusEnabled = true

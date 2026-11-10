@@ -27,6 +27,7 @@ public final class ClientItemDecorations {
         if (ClientConfig.SHOW_BROKEN_SLOT_OVERLAY.get() && BrokenWeaponHandler.isMarkedBroken(stack)) {
             drawBrokenOverlay(graphics, x, y);
         }
+        IdentityAura.drawSlot(graphics, stack, x, y);
     }
 
     private static void drawBrokenOverlay(GuiGraphics graphics, int x, int y) {

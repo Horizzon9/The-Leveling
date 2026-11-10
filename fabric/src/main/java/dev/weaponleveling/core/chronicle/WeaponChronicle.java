@@ -24,14 +24,16 @@ import java.util.Optional;
  * @param title    permanent name given to a Relic or Legacy item, or empty
  * @param foeTally encounters per entity type id
  * @param entries  notable moments, oldest first
+ * @param records  personal bests set by the item
  */
 public record WeaponChronicle(String bearer, String title, Map<String, Integer> foeTally,
-                              List<ChronicleEntry> entries) {
+                              List<ChronicleEntry> entries, ChronicleRecords records) {
     public static final int MAX_TRACKED_FOES = 16;
     public static final int MAX_ENTRIES = 24;
     public static final int MAX_BEARER_LENGTH = 32;
     public static final int MAX_TITLE_LENGTH = 32;
-    public static final WeaponChronicle EMPTY = new WeaponChronicle("", "", Map.of(), List.of());
+    public static final WeaponChronicle EMPTY = new WeaponChronicle("", "", Map.of(), List.of(),
+            ChronicleRecords.EMPTY);
 
     private static final Comparator<Map.Entry<String, Integer>> MOST_FACED_FIRST =
             Map.Entry.<String, Integer>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey());
@@ -41,6 +43,7 @@ public record WeaponChronicle(String bearer, String title, Map<String, Integer> 
         title = title == null ? "" : title;
         foeTally = Map.copyOf(foeTally);
         entries = List.copyOf(entries);
+        records = records == null ? ChronicleRecords.EMPTY : records;
         if (bearer.length() > MAX_BEARER_LENGTH || title.length() > MAX_TITLE_LENGTH
                 || foeTally.size() > MAX_TRACKED_FOES || entries.size() > MAX_ENTRIES) {
             throw new IllegalArgumentException("Weapon chronicle exceeds its storage bounds");
@@ -66,7 +69,7 @@ public record WeaponChronicle(String bearer, String title, Map<String, Integer> 
     }
 
     public boolean isEmpty() {
-        return bearer.isEmpty() && title.isEmpty() && foeTally.isEmpty() && entries.isEmpty();
+        return bearer.isEmpty() && title.isEmpty() && foeTally.isEmpty() && entries.isEmpty() && records.isEmpty();
     }
 
     public boolean hasTitle() {
@@ -103,7 +106,12 @@ public record WeaponChronicle(String bearer, String title, Map<String, Integer> 
         }
         String trimmed = playerName.strip();
         return new WeaponChronicle(trimmed.length() > MAX_BEARER_LENGTH
-                ? trimmed.substring(0, MAX_BEARER_LENGTH) : trimmed, title, foeTally, entries);
+                ? trimmed.substring(0, MAX_BEARER_LENGTH) : trimmed, title, foeTally, entries, records);
+    }
+
+    public WeaponChronicle withRecords(ChronicleRecords updated) {
+        return updated == null || updated.equals(records) ? this
+                : new WeaponChronicle(bearer, title, foeTally, entries, updated);
     }
 
     /** Gives the item its name and remembers the day. Renaming replaces the previous name and day. */
@@ -116,7 +124,7 @@ public record WeaponChronicle(String bearer, String title, Map<String, Integer> 
         newEntries.removeIf(entry -> entry.kind() == ChronicleEntry.Kind.TITLED);
         newEntries.add(new ChronicleEntry(ChronicleEntry.Kind.TITLED, "", 0, Math.max(0, day)));
         trimOldestMastery(newEntries);
-        return new WeaponChronicle(bearer, sanitized, foeTally, newEntries);
+        return new WeaponChronicle(bearer, sanitized, foeTally, newEntries, records);
     }
 
     /**
@@ -153,7 +161,7 @@ public record WeaponChronicle(String bearer, String title, Map<String, Integer> 
         List<ChronicleEntry> newEntries = new ArrayList<>(entries);
         newEntries.add(new ChronicleEntry(kind, "", 0, Math.max(0, day)));
         trimOldestMastery(newEntries);
-        return new WeaponChronicle(bearer, title, foeTally, newEntries);
+        return new WeaponChronicle(bearer, title, foeTally, newEntries, records);
     }
 
     private KillOutcome tally(String foeId, long day, FoeMastery mastery, List<ChronicleEntry> newEntries) {
@@ -175,7 +183,7 @@ public record WeaponChronicle(String bearer, String title, Map<String, Integer> 
             }
         }
         trimOldestMastery(newEntries);
-        return new KillOutcome(new WeaponChronicle(bearer, title, newTally, newEntries), reachedTier);
+        return new KillOutcome(new WeaponChronicle(bearer, title, newTally, newEntries, records), reachedTier);
     }
 
     private boolean makeRoom(Map<String, Integer> tally, FoeMastery mastery) {

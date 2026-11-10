@@ -1,0 +1,5 @@
+{
+  "type": "weaponleveling:legacy_transfer_template_chests",
+  "conditions": [],
+  "priority": 1000
+}

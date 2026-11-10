@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "weaponleveling:item/legacy_transfer_table"
+  }
+}

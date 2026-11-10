@@ -18,7 +18,9 @@ public record ServerSettingsPayload(int maxLevel, long baseXp, double growthFact
                                     boolean levelBonusEnabled,
                                     double levelMaxMultiplier, double levelCurveExponent,
                                     boolean autoDetectExternalWeapons,
-                                    List<Long> xpTable, boolean canConfigure, boolean usesExactXpTable) implements CustomPacketPayload {
+                                    List<Long> xpTable, boolean canConfigure, boolean usesExactXpTable,
+                                    boolean scaleCurveWithMaxLevel, boolean preserveBrokenItems,
+                                    boolean autoReplaceBroken) implements CustomPacketPayload {
     private static final int MAX_XP_TABLE_ENTRIES = 10_000;
     public static final Type<ServerSettingsPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(WeaponLevelingMod.MOD_ID, "server_settings"));
@@ -34,6 +36,7 @@ public record ServerSettingsPayload(int maxLevel, long baseXp, double growthFact
                             buffer.readBoolean(), buffer.readDouble(), buffer.readDouble(),
                             buffer.readBoolean(), buffer.readDouble(),
                             buffer.readDouble(), buffer.readBoolean(), readXpTable(buffer),
+                            buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(),
                             buffer.readBoolean(), buffer.readBoolean());
                 }
 
@@ -62,19 +65,22 @@ public record ServerSettingsPayload(int maxLevel, long baseXp, double growthFact
                     writeXpTable(buffer, payload.xpTable());
                     buffer.writeBoolean(payload.canConfigure());
                     buffer.writeBoolean(payload.usesExactXpTable());
+                    buffer.writeBoolean(payload.scaleCurveWithMaxLevel());
+                    buffer.writeBoolean(payload.preserveBrokenItems());
+                    buffer.writeBoolean(payload.autoReplaceBroken());
                 }
             };
 
     public static ServerSettingsPayload defaults() {
-        return new ServerSettingsPayload(500, 100, 1.02432611896515, false, 25, 100,
+        return new ServerSettingsPayload(500, 50, 1.02432611896515, false, 25, 100,
                 true, false, 5, 10_000,
                 true, 1.0, 10_000,
-                true, 0.004, 2.0,
-                true, 11.0, 1.05, true, List.of(), false, false);
+                true, 0.02, 20.0,
+                true, 11.0, 1.05, true, List.of(), false, false, true, true, false);
     }
 
     public static ServerSettingsPayload fromServer(boolean canConfigure) {
-        return new ServerSettingsPayload(ServerConfig.MAX_LEVEL.get(), ServerConfig.BASE_XP.get(),
+        return new ServerSettingsPayload(ServerConfig.MAX_LEVEL.get(), ServerConfig.effectiveBaseXp(),
                 ServerConfig.GROWTH_FACTOR.get(), ServerConfig.ALLOW_CREATIVE_PROGRESS.get(),
                 ServerConfig.RELIC_LEVEL_PERCENT.get(), ServerConfig.LEGACY_LEVEL_PERCENT.get(),
                 ServerConfig.KILL_XP_ENABLED.get(), ServerConfig.PLAYER_KILL_XP_ENABLED.get(),
@@ -86,8 +92,10 @@ public record ServerSettingsPayload(int maxLevel, long baseXp, double growthFact
                 ServerConfig.LEVEL_DAMAGE_BONUS_ENABLED.get(),
                 ServerConfig.LEVEL_DAMAGE_MAX_MULTIPLIER.get(), ServerConfig.LEVEL_DAMAGE_CURVE_EXPONENT.get(),
                 ServerConfig.AUTO_DETECT_EXTERNAL_WEAPONS.get(),
-                ServerConfig.XP_TABLE.get().stream().map(Number::longValue).toList(),
-                canConfigure, !ServerConfig.XP_TABLE.get().isEmpty());
+                ServerConfig.effectiveXpTable(),
+                canConfigure, !ServerConfig.XP_TABLE.get().isEmpty(),
+                ServerConfig.SCALE_CURVE_WITH_MAX_LEVEL.get(), ServerConfig.PRESERVE_BROKEN_ITEMS.get(),
+                ServerConfig.AUTO_REPLACE_BROKEN.get());
     }
 
     @Override

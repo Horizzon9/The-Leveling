@@ -12,8 +12,11 @@ public final class ArmorProtection {
     }
 
     public static double baseArmor(ItemStack stack) {
-        ItemAttributeModifiers modifiers = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,
-                stack.getItem().getDefaultAttributeModifiers());
+        ItemAttributeModifiers modifiers = stack.get(DataComponents.ATTRIBUTE_MODIFIERS);
+        if (modifiers == null || modifiers.modifiers().isEmpty()) {
+            // Per-stack defaults cover mods that compute armor from the stack's own data.
+            modifiers = stack.getItem().getDefaultAttributeModifiers(stack);
+        }
         final double[] baseArmor = {0};
         modifiers.modifiers().forEach(entry -> {
             if (entry.attribute().equals(Attributes.ARMOR)
